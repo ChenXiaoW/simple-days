@@ -1,3 +1,4 @@
+import { t, weekdayLabels, monthHeading, weekHeading } from "./i18n";
 import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import type ScheduleManagerPlugin from "./main";
 import type { ScheduleDraft, ScheduleEvent } from "./main";
@@ -22,10 +23,10 @@ export class ScheduleView extends ItemView {
     super(leaf); this.eventDrag = new EventDragController(plugin, date => this.selectDate(parseDate(date)));
   }
   getViewType(): string { return VIEW_TYPE_SCHEDULE; }
-  getDisplayText(): string { return "日程管理"; }
+  getDisplayText(): string { return t("scheduleTitle"); }
   getIcon(): string { return "calendar-days"; }
   async onOpen(): Promise<void> {
-    this.addAction("panel-right", "打开日程概览", () => { void this.plugin.openOverview(); });
+    this.addAction("panel-right", t("openOverview"), () => { void this.plugin.openOverview(); });
     this.rootEl = this.contentEl; this.rootEl.addClass("schedule-manager-view"); this.render(); this.restoreEditor();
   }
   async onClose(): Promise<void> { this.eventDrag.dispose(); this.editor?.close(); this.rootEl?.empty(); }
@@ -96,28 +97,28 @@ export class ScheduleView extends ItemView {
     const heading = header.createDiv("schedule-title-wrap");
     const title = heading.createDiv("schedule-heading-line");
     const start = startOfWeek(this.selectedDate); const end = addDays(start, 6);
-    title.createEl("h2", { text: this.viewMode === "month" ? `${this.selectedDate.getFullYear()}年${this.selectedDate.getMonth() + 1}月`
-      : `${start.getMonth() + 1}月${start.getDate()}日 - ${end.getMonth() + 1}月${end.getDate()}日`, attr: { "aria-live": "polite" } });
-    badge(title, this.viewMode === "week" ? `第 ${weekNumber(this.selectedDate)} 周` : `${this.selectedDate.getFullYear()} 年`, "work");
+    title.createEl("h2", { text: this.viewMode === "month" ? monthHeading(this.selectedDate)
+      : weekHeading(start, end), attr: { "aria-live": "polite" } });
+    badge(title, this.viewMode === "week" ? t("weekNumber", { week: weekNumber(this.selectedDate) }) : t("year", { year: this.selectedDate.getFullYear() }), "work");
     const month = dateKey(this.selectedDate).slice(0, 7);
     const from = this.viewMode === "month" ? `${month}-01` : dateKey(start);
     const to = this.viewMode === "month" ? dateKey(new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth() + 1, 0)) : dateKey(end);
     const period = this.events().filter(event => overlapsDates(event, from, to));
     const hours = period.reduce((total, event) => total + durationInDates(event, from, to), 0);
-    heading.createDiv("schedule-current-date").setText(`${this.viewMode === "month" ? "月度日程 · 月历视图" : "周度日程 · 时间轴视图"}  ·  ${period.length} 个日程 · ${Number(hours.toFixed(1))} 小时`);
+    heading.createDiv("schedule-current-date").setText(t("periodSummary", { view: this.viewMode === "month" ? t("monthSummary") : t("weekSummary"), count: period.length, hours: Number(hours.toFixed(1)) }));
     const actions = header.createDiv("schedule-header-actions");
     const move = (direction: number) => this.selectDate(this.viewMode === "month" ? addMonths(this.selectedDate, direction) : addDays(this.selectedDate, direction * 7));
-    const previous = button(actions, "上一页", "chevron-left", () => move(-1), "schedule-icon-only");
+    const previous = button(actions, t("previous"), "chevron-left", () => move(-1), "schedule-icon-only");
     this.eventDrag.pageTarget(previous, () => move(-1));
-    button(actions, "今天", "locate-fixed", () => this.selectDate(new Date()), "schedule-today-button");
-    const next = button(actions, "下一页", "chevron-right", () => move(1), "schedule-icon-only");
+    button(actions, t("today"), "locate-fixed", () => this.selectDate(new Date()), "schedule-today-button");
+    const next = button(actions, t("next"), "chevron-right", () => move(1), "schedule-icon-only");
     this.eventDrag.pageTarget(next, () => move(1));
-    button(actions, "新建", "plus", () => this.openEditor(), "schedule-primary schedule-add-button");
+    button(actions, t("new"), "plus", () => this.openEditor(), "schedule-primary schedule-add-button");
   }
   private renderToolbar(parent: HTMLElement): void {
     const toolbar = parent.createDiv("schedule-view-toolbar");
-    const group = toolbar.createDiv("schedule-view-switch"); group.setAttribute("role", "group"); group.setAttribute("aria-label", "日历视图");
-    ([{ mode: "month", label: "月视图", icon: "calendar-days" }, { mode: "week", label: "周视图", icon: "calendar-range" }] as const).forEach(item => {
+    const group = toolbar.createDiv("schedule-view-switch"); group.setAttribute("role", "group"); group.setAttribute("aria-label", t("calendarView"));
+    ([{ mode: "month", label: t("monthView"), icon: "calendar-days" }, { mode: "week", label: t("weekView"), icon: "calendar-range" }] as const).forEach(item => {
       const toggle = button(group, item.label, item.icon, () => {
         if (this.viewMode === item.mode) return;
         this.viewMode = item.mode;
@@ -129,18 +130,18 @@ export class ScheduleView extends ItemView {
     const tools = toolbar.createDiv("schedule-view-tools");
     const zoom = tools.createDiv("schedule-zoom"); zoom.toggleClass("is-hidden", this.viewMode !== "week");
     zoom.setAttribute("aria-hidden", String(this.viewMode !== "week"));
-    button(zoom, "缩小时间轴", "minus", () => { this.zoom = Math.max(75, this.zoom - 25); this.render(); }, "schedule-icon-only").disabled = this.zoom <= 75;
+    button(zoom, t("zoomOut"), "minus", () => { this.zoom = Math.max(75, this.zoom - 25); this.render(); }, "schedule-icon-only").disabled = this.zoom <= 75;
     zoom.createSpan({ text: `${this.zoom}%` });
-    button(zoom, "放大时间轴", "plus", () => { this.zoom = Math.min(150, this.zoom + 25); this.render(); }, "schedule-icon-only").disabled = this.zoom >= 150;
-    const filter = tools.createEl("select", { cls: "schedule-filter", attr: { "aria-label": "筛选日历" } });
-    filter.createEl("option", { text: "全部日历", value: "all" });
+    button(zoom, t("zoomIn"), "plus", () => { this.zoom = Math.min(150, this.zoom + 25); this.render(); }, "schedule-icon-only").disabled = this.zoom >= 150;
+    const filter = tools.createEl("select", { cls: "schedule-filter", attr: { "aria-label": t("filterCalendars") } });
+    filter.createEl("option", { text: t("allCalendars"), value: "all" });
     CATEGORIES.forEach(item => filter.createEl("option", { text: item.label, value: item.id })); filter.value = this.category;
     filter.addEventListener("change", () => { this.category = filter.value as typeof this.category; this.render(); });
   }
   private renderMonth(parent: HTMLElement): void {
     const calendar = parent.createDiv("schedule-month");
     const weekdays = calendar.createDiv("schedule-month-weekdays");
-    ["周一", "周二", "周三", "周四", "周五", "周六", "周日"].forEach((day, index) => weekdays.createSpan({ cls: index > 4 ? "is-weekend" : "", text: day }));
+    weekdayLabels().forEach((day, index) => weekdays.createSpan({ cls: index > 4 ? "is-weekend" : "", text: day }));
     const grid = calendar.createDiv("schedule-month-grid");
     const first = startOfWeek(new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), 1));
     const today = dateKey(new Date());
@@ -155,12 +156,12 @@ export class ScheduleView extends ItemView {
       cell.toggleClass("is-selected", key === dateKey(this.selectedDate)); cell.toggleClass("is-today", key === today); cell.toggleClass("is-weekend", index % 7 > 4);
       const cellHeader = cell.createDiv("schedule-cell-header");
       const day = button(cellHeader, String(date.getDate()), null, () => this.selectDate(date), "schedule-date-button");
-      day.setAttribute("aria-label", `${key}${key === today ? " 今天" : ""}，${events.length} 个日程`);
+      day.setAttribute("aria-label", t("dateCell", { date: key, today: key === today ? ` ${t("today")}` : "", count: events.length }));
       day.setAttribute("aria-pressed", String(key === dateKey(this.selectedDate)));
       if (key === today) day.setAttribute("aria-current", "date");
-      if (key === today) cellHeader.createSpan({ cls: "schedule-today-label", text: "今天" });
+      if (key === today) cellHeader.createSpan({ cls: "schedule-today-label", text: t("today") });
       events.slice(0, 3).forEach(event => this.eventChip(cell, event, key));
-      if (events.length > 3) button(cell, `还有 ${events.length - 3} 项`, null, () => {
+      if (events.length > 3) button(cell, t("moreEvents", { count: events.length - 3 }), null, () => {
         this.selectDate(date); this.rootEl.querySelector(".schedule-agenda")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }, "schedule-overflow");
       cell.addEventListener("click", evt => {
@@ -177,10 +178,10 @@ export class ScheduleView extends ItemView {
     const chip = button(parent, event.title, null, () => new ScheduleDetailModal(this.plugin, event, date).open(), `schedule-event-chip schedule-category-${categoryOf(event)}`);
     chip.empty(); chip.toggleClass("is-completed", event.completed);
     chip.createSpan({ cls: "schedule-chip-dot" });
-    if (endDateOf(event) !== event.date) chip.createSpan({ cls: "schedule-chip-time", text: date === event.date ? "跨天" : "续" });
+    if (endDateOf(event) !== event.date) chip.createSpan({ cls: "schedule-chip-time", text: date === event.date ? t("multiDay") : t("continued") });
     else if (event.startTime) chip.createSpan({ cls: "schedule-chip-time", text: event.startTime });
     chip.createSpan({ cls: "schedule-chip-title", text: event.title });
-    chip.setAttribute("aria-label", `${categoryLabel(event)} · ${timeRange(event)} · ${event.title}${event.completed ? " · 已完成" : ""}`);
+    chip.setAttribute("aria-label", `${categoryLabel(event)} · ${timeRange(event)} · ${event.title}${event.completed ? ` · ${t("completed")}` : ""}`);
     chip.title = `${timeRange(event)} ${event.title}`;
     this.eventDrag.draggable(chip, event, date);
   }
@@ -193,13 +194,13 @@ export class ScheduleView extends ItemView {
     const startHour = Math.min(8, ...intervals.map(item => Math.floor(item.start / 60)));
     const endHour = Math.max(20, ...intervals.map(item => Math.ceil(item.end / 60)));
     const hourHeight = 64 * this.zoom / 100;
-    const viewport = parent.createDiv("schedule-week-viewport"); viewport.setAttribute("aria-label", "周时间轴，可横向滚动查看七天");
+    const viewport = parent.createDiv("schedule-week-viewport"); viewport.setAttribute("aria-label", t("weekTimeline"));
     const week = viewport.createDiv("schedule-week");
     const head = week.createDiv("schedule-week-head");
     const offset = -new Date().getTimezoneOffset();
     const zone = `GMT${offset >= 0 ? "+" : "−"}${Math.floor(Math.abs(offset) / 60)}${Math.abs(offset) % 60 ? `:${String(Math.abs(offset) % 60).padStart(2, "0")}` : ""}`;
     head.createDiv("schedule-timezone").setText(zone);
-    const allDay = week.createDiv("schedule-all-day-row"); allDay.createDiv("schedule-timezone").setText("全天");
+    const allDay = week.createDiv("schedule-all-day-row"); allDay.createDiv("schedule-timezone").setText(t("allDay"));
     const body = week.createDiv("schedule-week-body"); body.style.height = `${(endHour - startHour) * hourHeight}px`;
     const gutter = body.createDiv("schedule-time-gutter");
     for (let hour = startHour; hour < endHour; hour++) {
@@ -209,17 +210,17 @@ export class ScheduleView extends ItemView {
       const date = addDays(first, index); const key = dateKey(date); const isToday = key === dateKey(new Date());
       const dayHead = button(head, "", null, () => this.selectDate(date), "schedule-week-day-heading");
       dayHead.setAttribute("aria-label", dayLabel(date)); dayHead.toggleClass("is-today", isToday); dayHead.toggleClass("is-selected", key === dateKey(this.selectedDate));
-      dayHead.createSpan({ text: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"][index] }); dayHead.createEl("strong", { text: String(date.getDate()) });
+      dayHead.createSpan({ text: weekdayLabels()[index] }); dayHead.createEl("strong", { text: String(date.getDate()) });
       const allDayCell = allDay.createDiv("schedule-all-day-cell"); allDayCell.toggleClass("is-today", isToday);
       this.eventDrag.dropTarget(dayHead, key); this.eventDrag.dropTarget(allDayCell, key);
       const dailyAll = events.filter(event => occursOn(event, key) && isAllDay(event));
       dailyAll.forEach(event => this.eventChip(allDayCell, event, key));
-      button(allDayCell, "添加全天日程", "plus", () => this.openEditor(undefined, { date: key, startTime: "", endTime: "" }), "schedule-all-day-add schedule-icon-only");
+      button(allDayCell, t("addAllDay"), "plus", () => this.openEditor(undefined, { date: key, startTime: "", endTime: "" }), "schedule-all-day-add schedule-icon-only");
       const column = body.createDiv("schedule-day-column"); column.dataset.date = key; column.toggleClass("is-today", isToday);
       this.eventDrag.dropTarget(column, key);
       for (let half = startHour * 2; half < endHour * 2; half++) {
         const minute = half * 30;
-        const slot = button(column, `${dayLabel(date)} ${clockTime(minute)} 新建日程`, null, () => {}, "schedule-time-slot");
+        const slot = button(column, t("createAtTime", { date: dayLabel(date), time: clockTime(minute) }), null, () => {}, "schedule-time-slot");
         slot.empty();
         slot.style.height = `${hourHeight / 2}px`; slot.dataset.minute = String(minute);
         slot.addEventListener("click", evt => {
@@ -243,7 +244,7 @@ export class ScheduleView extends ItemView {
       if (isToday) {
         const now = new Date(); const minute = now.getHours() * 60 + now.getMinutes();
         if (minute >= startHour * 60 && minute < endHour * 60) {
-          const line = column.createDiv("schedule-now-line"); line.style.top = `${(minute / 60 - startHour) * hourHeight}px`; line.setAttribute("aria-label", `当前时间 ${clockTime(minute)}`);
+          const line = column.createDiv("schedule-now-line"); line.style.top = `${(minute / 60 - startHour) * hourHeight}px`; line.setAttribute("aria-label", t("currentTime", { time: clockTime(minute) }));
         }
       }
     }
@@ -271,17 +272,17 @@ export class ScheduleView extends ItemView {
   private renderLegend(parent: HTMLElement): void {
     const footer = parent.createDiv("schedule-calendar-footer"); const legend = footer.createDiv("schedule-legend");
     CATEGORIES.forEach(item => { const label = legend.createSpan({ cls: `schedule-legend-item schedule-category-${item.id}` }); label.createSpan({ cls: "schedule-chip-dot" }); label.createSpan({ text: item.label }); });
-    footer.createSpan({ cls: "schedule-muted schedule-calendar-hint", text: this.viewMode === "week" ? "拖动日程更改日期 · 拖动空白时间格新建" : "拖动日程更改日期 · 双击空白格新建" });
+    footer.createSpan({ cls: "schedule-muted schedule-calendar-hint", text: this.viewMode === "week" ? t("weekHint") : t("monthHint") });
   }
   private renderAgenda(parent: HTMLElement): void {
     const agenda = parent.createDiv("schedule-agenda"); const header = agenda.createDiv("schedule-agenda-header");
     const heading = header.createDiv(); heading.createEl("h3", { text: dayLabel(this.selectedDate, this.plugin.settings.dateFormat === "long") });
-    const events = this.forDate(dateKey(this.selectedDate)); heading.createSpan({ cls: "schedule-muted", text: `${events.length} 项安排` });
+    const events = this.forDate(dateKey(this.selectedDate)); heading.createSpan({ cls: "schedule-muted", text: t("agendaCount", { count: events.length }) });
     const actions = header.createDiv("schedule-agenda-actions");
-    button(actions, "打开日记", "notebook-pen", () => { void this.plugin.openDailyNote(dateKey(this.selectedDate)); });
-    button(actions, "新建日程", "plus", () => this.openEditor());
+    button(actions, t("openDailyNote"), "notebook-pen", () => { void this.plugin.openDailyNote(dateKey(this.selectedDate)); });
+    button(actions, t("createEvent"), "plus", () => this.openEditor());
     if (!events.length) {
-      const empty = agenda.createDiv("schedule-agenda-empty"); icon(empty, "coffee"); empty.createSpan({ text: this.category === "all" ? "今天暂无安排，留一点时间给自己" : "当天没有此分类的日程" });
+      const empty = agenda.createDiv("schedule-agenda-empty"); icon(empty, "coffee"); empty.createSpan({ text: this.category === "all" ? t("agendaEmpty") : t("categoryEmpty") });
     }
     events.forEach(event => {
       const row = button(agenda, "", null, () => new ScheduleDetailModal(this.plugin, event, dateKey(this.selectedDate)).open(), "schedule-agenda-row");

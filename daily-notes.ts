@@ -1,3 +1,4 @@
+import { t, errorMessage } from "./i18n";
 import { App, TFile, TFolder, moment, normalizePath } from "obsidian";
 import type momentFactory from "moment";
 import type { ScheduleEvent } from "./main";
@@ -40,7 +41,7 @@ function renderSchedules(events: DailyOccurrence[]): string {
     a.date.localeCompare(b.date) || a.event.startTime.localeCompare(b.event.startTime) || a.event.title.localeCompare(b.event.title),
   );
   const multipleDates = new Set(events.map((event) => event.date)).size > 1;
-  const lines = [BLOCK_START, "## 日程", ""];
+  const lines = [BLOCK_START, `## ${t("dailyHeading")}`, ""];
   let previousDate = "";
   for (const occurrence of sorted) {
     const { event, date } = occurrence;
@@ -51,14 +52,14 @@ function renderSchedules(events: DailyOccurrence[]): string {
     previousDate = date;
     const time = dayTimeRange(event, date);
     lines.push(`- [${event.completed ? "x" : " "}] ${singleLine(time)} ${singleLine(event.title)}`);
-    if (endDateOf(event) !== event.date) lines.push(`  - 起止：${singleLine(timeRange(event))}`);
-    if (event.location) lines.push(`  - 地点：${singleLine(event.location)}`);
-    if (event.participants?.length) lines.push(`  - 参与人：${singleLine(event.participants.join("、"))}`);
-    if (event.tags?.length) lines.push(`  - 标签：${singleLine(event.tags.map(tag => `#${tag}`).join(" "))}`);
+    if (endDateOf(event) !== event.date) lines.push(`  - ${t("dailyRange", { value: singleLine(timeRange(event)) })}`);
+    if (event.location) lines.push(`  - ${t("dailyLocation", { value: singleLine(event.location) })}`);
+    if (event.participants?.length) lines.push(`  - ${t("dailyParticipants", { value: singleLine(event.participants.join(t("listSeparator"))) })}`);
+    if (event.tags?.length) lines.push(`  - ${t("dailyTags", { value: singleLine(event.tags.map(tag => `#${tag}`).join(" ")) })}`);
     if (event.notes) {
       const notes = safeText(event.notes).replace(/\r\n?/g, "\n").split("\n");
       // Start a nested Markdown block so headings, lists and fenced code retain their structure.
-      lines.push("  - 备注：", "", ...notes.map(line => line ? `    ${line}` : ""), "");
+      lines.push(`  - ${t("dailyNotes")}`, "", ...notes.map(line => line ? `    ${line}` : ""), "");
     }
   }
   lines.push(BLOCK_END);
@@ -76,7 +77,7 @@ export function replaceScheduleBlock(content: string, block: string): string {
   }
   if (start === -1 || end < start || content.indexOf(BLOCK_START, start + BLOCK_START.length) !== -1
     || content.indexOf(BLOCK_END, end + BLOCK_END.length) !== -1) {
-    throw new Error("日程同步区块的标记不完整或重复，请修复标记后重试");
+    throw new Error(t("malformedBlock"));
   }
   return content.slice(0, start) + replacement + content.slice(end + BLOCK_END.length);
 }
@@ -87,12 +88,12 @@ export class DailyNotesService {
   private relativePath(path: string): string {
     const relative = path.trim().replace(/\\/g, "/");
     if (/^(?:\/|[a-zA-Z]:)/.test(relative) || relative.split("/").some((part) => part === "..")) {
-      throw new Error("请使用库内的相对日记路径");
+      throw new Error(t("relativePathRequired"));
     }
     const normalized = normalizePath(relative);
     const configDir = normalizePath(this.app.vault.configDir);
     if (normalized === configDir || normalized.startsWith(`${configDir}/`)) {
-      throw new Error("日记不能保存在 Obsidian 配置目录中");
+      throw new Error(t("configPathForbidden"));
     }
     return normalized;
   }
@@ -114,7 +115,7 @@ export class DailyNotesService {
 
   private pathForDate(date: string, config: DailyNoteConfig): string {
     const day = createMoment(date, "YYYY-MM-DD", true);
-    if (!day.isValid()) throw new Error(`日程日期无效：${date}`);
+    if (!day.isValid()) throw new Error(t("invalidDateValue", { date: date }));
     const name = day.format(config.format);
     const path = this.relativePath(`${config.folder ? `${config.folder}/` : ""}${name}.md`);
     return path;
@@ -126,7 +127,7 @@ export class DailyNotesService {
     for (const folder of folders) {
       current = current ? `${current}/${folder}` : folder;
       const existing = this.app.vault.getAbstractFileByPath(current);
-      if (existing && !(existing instanceof TFolder)) throw new Error(`日记目录被文件占用：${current}`);
+      if (existing && !(existing instanceof TFolder)) throw new Error(t("folderIsFile", { path: current }));
       if (!existing) {
         try { await this.app.vault.createFolder(current); }
         catch (error) {
@@ -140,7 +141,7 @@ export class DailyNotesService {
     if (!config.template) return "";
     const templatePath = this.relativePath(config.template.endsWith(".md") ? config.template : `${config.template}.md`);
     const file = this.app.vault.getAbstractFileByPath(templatePath);
-    if (!(file instanceof TFile)) throw new Error(`找不到日记模板：${templatePath}`);
+    if (!(file instanceof TFile)) throw new Error(t("missingTemplate", { path: templatePath }));
     const content = await this.app.vault.cachedRead(file);
     const day = createMoment(date, "YYYY-MM-DD", true);
     return content.replace(/\{\{\s*(date|time)(?::([^}]+))?\s*\}\}/g, (_match, kind: string, format?: string) =>
@@ -151,7 +152,7 @@ export class DailyNotesService {
   private async ensureNote(path: string, date: string, config: DailyNoteConfig): Promise<TFile> {
     const existing = this.app.vault.getAbstractFileByPath(path);
     if (existing instanceof TFile) return existing;
-    if (existing) throw new Error(`日记路径被文件夹占用：${path}`);
+    if (existing) throw new Error(t("noteIsFolder", { path: path }));
     const initial = await this.template(date, config);
     await this.createFolders(path);
     try { return await this.app.vault.create(path, initial); }
@@ -194,7 +195,7 @@ export class DailyNotesService {
         if (schedules.length > 0) paths.add(path);
         else paths.delete(path);
       } catch (error) {
-        errors.push(`${path}：${error instanceof Error ? error.message : String(error)}`);
+        errors.push(t("pathError", { path, error: errorMessage(error) }));
       }
     }
     return { paths: [...paths].sort(), errors };

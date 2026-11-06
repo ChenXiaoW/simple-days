@@ -3,6 +3,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const compiled = fs.readFileSync(require('node:path').join(__dirname, '..', 'main.js'), 'utf8');
 const api = {
+  getLanguage: () => 'zh',
   Plugin: class {},
   ItemView: class {
     constructor(leaf) { this.leaf = leaf; }

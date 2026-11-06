@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const context = {module:{exports:{}},require:()=>({Plugin:class{},ItemView:class{},Modal:class{},PluginSettingTab:class{}})};
+const context = {module:{exports:{}},require:()=>({getLanguage:()=> 'zh',Plugin:class{},ItemView:class{},Modal:class{},PluginSettingTab:class{}})};
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..','main.js'),'utf8') + '\nmodule.exports.calendar={dateKey,parseDate,validDate,addDays,addMonths,startOfWeek,weekNumber,placeEvents,eventInterval,categoryOf,endDateOf,eventDates,occursOn,overlapsDates,dayTimeRange,durationInDates,shiftedDates,validateEventRange};',context);
 const c = context.module.exports.calendar;
 assert.equal(c.validDate('2026-02-29'),false);

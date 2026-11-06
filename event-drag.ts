@@ -1,3 +1,4 @@
+import { t, errorMessage } from "./i18n";
 import { Notice } from "obsidian";
 import type ScheduleManagerPlugin from "./main";
 import type { ScheduleEvent } from "./main";
@@ -49,8 +50,8 @@ export class EventDragController {
       if (!payload || this.moving || payload.date === date) return;
       this.moving = true; this.suppressClickUntil = Date.now() + 250;
       void this.plugin.moveEvent(payload.id, payload.date, date).then(() => {
-        this.selected(date); new Notice("日程已移动，原有时间和跨度已保留");
-      }).catch(cause => new Notice(`移动失败：${cause instanceof Error ? cause.message : String(cause)}`))
+        this.selected(date); new Notice(t("eventMoved"));
+      }).catch(cause => new Notice(t("moveFailed", { error: errorMessage(cause) })))
         .finally(() => { this.moving = false; });
     });
   }

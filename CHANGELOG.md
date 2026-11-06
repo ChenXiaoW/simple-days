@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.5
+
+- Follow Obsidian’s language setting throughout the calendar, sidebar, event dialogs, Markdown editor, settings, commands, and notices.
+- Display Chinese for Chinese language settings and English for English or unsupported languages, including localized months, weekdays, and category labels.
+- Localize generated daily-note schedule blocks while retaining their stable markers, configured paths, surrounding text, and user-entered event content.
+- Retain compatibility with Obsidian 1.7.2 using the host Moment locale when the newer language API is unavailable.
+
 ## 0.6.4
 
 - Generate and cryptographically verify GitHub build provenance attestations for all three release files.

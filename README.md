@@ -16,7 +16,7 @@ A schedule manager for Obsidian with month and week calendars, Markdown event no
 - Sync events to the matching daily notes and open those notes from the calendar.
 - Use light and dark themes and responsive layouts.
 
-The current interface is in Chinese. The plugin requires Obsidian 1.7.2 or later. It uses Obsidian APIs and browser APIs, with no Node.js or Electron APIs at runtime.
+The interface follows Obsidian’s language setting: Chinese for Chinese settings and English for English or currently unsupported languages. Dates, weekdays, categories, settings, commands, notices, and generated daily-note labels follow the same language. Reload Obsidian after changing its language. User-entered event content and configured note paths are preserved. The plugin requires Obsidian 1.7.2 or later. It uses Obsidian APIs and browser APIs, with no Node.js or Electron APIs at runtime.
 
 ## Installation
 
@@ -45,11 +45,11 @@ Keep the old plugin disabled while using Simple Days. Both would otherwise updat
 
 ## Usage
 
-- Click the calendar ribbon icon or run **Simple Days: 打开日程管理** to open the calendar.
-- Switch between **月视图** (month) and **周视图** (week) in the toolbar.
-- Select a day to see its agenda. Use **新建日程** to add an event, or double-click a blank month cell on desktop.
+- Click the calendar ribbon icon or run **Simple Days: Open schedule** to open the calendar.
+- Switch between **Month** and **Week** in the toolbar.
+- Select a day to see its agenda. Use **New event** to add an event, or double-click a blank month cell on desktop.
 - Open an event to view, edit, duplicate, complete, or delete it, or to open its daily note.
-- Use **在侧边栏打开日程概览** to open the compact overview.
+- Use **Open schedule overview in sidebar** to open the compact overview.
 
 ![Week view with example schedules](images/week.png)
 
@@ -61,7 +61,7 @@ Desktop drag and drop moves an entire event, retaining its times and span. Dragg
 
 ### Markdown notes
 
-Use **编辑** / **预览** to switch between Markdown source and preview. Drag the input's bottom-right handle on desktop to change its height, or select **放大备注** to edit in a larger window. Closing the larger window keeps the draft in the event form; save the event to persist it.
+Use **Edit** / **Preview** to switch between Markdown source and preview. Drag the input's bottom-right handle on desktop to change its height, or select **Expand notes** to edit in a larger window. Closing the larger window keeps the draft in the event form; save the event to persist it.
 
 Checklists in event details save immediately and update synchronized daily notes. Editor previews remain read-only. Internal links and attachments resolve relative to the vault root.
 

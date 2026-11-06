@@ -1,3 +1,4 @@
+import { t, errorMessage } from "./i18n";
 import { App, Component, MarkdownRenderer, Modal, Notice } from "obsidian";
 import { button, icon } from "./ui";
 import { markdownTaskOffsets } from "./markdown-tasks";
@@ -15,7 +16,7 @@ export class MarkdownNotesPreview {
       event.preventDefault(); event.stopPropagation();
       // Notes belong to an event rather than a Markdown file; resolve links from the vault root.
       void this.app.workspace.openLinkText(path, "", event.ctrlKey || event.metaKey)
-        .catch((error: unknown) => new Notice(`无法打开链接：${error instanceof Error ? error.message : String(error)}`));
+        .catch((error: unknown) => new Notice(t("openLinkFailed", { error: errorMessage(error) })));
     });
   }
 
@@ -27,7 +28,7 @@ export class MarkdownNotesPreview {
   async render(markdown: string): Promise<void> {
     this.clear();
     if (!markdown.trim()) {
-      this.root.createDiv({ cls: "schedule-notes-empty", text: "暂无备注，切换到编辑后输入内容" });
+      this.root.createDiv({ cls: "schedule-notes-empty", text: t("notesEmpty") });
       return;
     }
     const owner = new Component(); this.component = owner; owner.load();
@@ -40,7 +41,7 @@ export class MarkdownNotesPreview {
     } catch {
       if (this.component !== owner) { owner.unload(); return; }
       owner.unload(); this.component = null; content.empty();
-      content.createDiv({ cls: "schedule-muted", text: "预览未能加载，以下为备注原文" });
+      content.createDiv({ cls: "schedule-muted", text: t("previewFailed") });
       content.createEl("pre", { text: markdown });
     } finally {
       if (this.component === owner || this.component === null) this.root.removeAttribute("aria-busy");
@@ -85,7 +86,7 @@ export class MarkdownNotesPreview {
           item?.setAttribute("data-task", checked ? "x" : " ");
         } catch (error) {
           input.checked = wasChecked;
-          new Notice("保存勾选失败：" + (error instanceof Error ? error.message : String(error)));
+          new Notice(t("saveTaskFailed", { error: errorMessage(error) }));
         } finally {
           saving = false;
           if (this.component === owner) {
@@ -110,25 +111,25 @@ export class MarkdownNotesEditor {
     const id = `schedule-notes-${++editorId}`;
     const field = parent.createDiv("schedule-field schedule-notes-field");
     const label = field.createDiv("schedule-notes-label");
-    label.createEl("label", { text: "备注", attr: { for: id } });
+    label.createEl("label", { text: t("notes"), attr: { for: id } });
     label.createSpan({ cls: "schedule-muted", text: "Markdown" });
     const panel = field.createDiv("schedule-notes-panel");
     const toolbar = panel.createDiv("schedule-notes-toolbar");
     const modes = toolbar.createDiv("schedule-notes-modes");
-    modes.setAttribute("role", "group"); modes.setAttribute("aria-label", "备注显示方式");
-    const edit = button(modes, "编辑", "pencil", () => setMode(false));
-    const view = button(modes, "预览", "eye", () => setMode(true));
+    modes.setAttribute("role", "group"); modes.setAttribute("aria-label", t("notesMode"));
+    const edit = button(modes, t("edit"), "pencil", () => setMode(false));
+    const view = button(modes, t("preview"), "eye", () => setMode(true));
     if (!expanded) {
-      const expand = button(toolbar, "放大备注", "maximize-2", () => this.expand(), "schedule-notes-expand");
-      expand.title = "放大编辑备注";
+      const expand = button(toolbar, t("expandNotes"), "maximize-2", () => this.expand(), "schedule-notes-expand");
+      expand.title = t("expandNotesTitle");
     }
     this.input = panel.createEl("textarea", { cls: "schedule-notes-input", attr: {
-      id, name: "notes", rows: "6", "aria-label": "备注（Markdown）",
-      placeholder: "支持 Markdown：标题、清单、链接、代码块…", spellcheck: "false",
+      id, name: "notes", rows: "6", "aria-label": t("notesMarkdown"),
+      placeholder: t("notesPlaceholder"), spellcheck: "false",
     } });
     this.input.value = value;
     const previewEl = panel.createDiv("schedule-notes-preview");
-    previewEl.setAttribute("role", "region"); previewEl.setAttribute("aria-label", "备注预览");
+    previewEl.setAttribute("role", "region"); previewEl.setAttribute("aria-label", t("notesPreview"));
     this.preview = new MarkdownNotesPreview(app, previewEl);
     const setMode = (preview: boolean) => {
       this.previewMode = preview;
@@ -140,7 +141,7 @@ export class MarkdownNotesEditor {
     setMode(false);
     this.input.addEventListener("input", () => this.changed(this.input.value));
     field.createDiv({ cls: "schedule-notes-hint", text: expanded
-      ? "收起后继续编辑日程，保存日程后生效" : "拖动右下角可调整高度，长内容可放大编辑" });
+      ? t("expandedHint") : t("resizeHint") });
   }
 
   private expand(): void {
@@ -170,11 +171,11 @@ class ExpandedNotesModal extends Modal {
     const header = this.contentEl.createDiv("schedule-modal-header");
     icon(header, "notebook-pen", "schedule-header-emblem");
     const heading = header.createDiv("schedule-modal-heading");
-    heading.createEl("h2", { text: "编辑备注" });
-    heading.createDiv({ cls: "schedule-muted", text: "为日程补充说明、清单与资料" });
+    heading.createEl("h2", { text: t("editNotes") });
+    heading.createDiv({ cls: "schedule-muted", text: t("notesSubtitle") });
     this.editor = new MarkdownNotesEditor(this.app, this.contentEl, this.value, true, this.changed);
     const footer = this.contentEl.createDiv("schedule-modal-footer");
-    button(footer, "收起", "minimize-2", () => this.close(), "schedule-primary");
+    button(footer, t("collapse"), "minimize-2", () => this.close(), "schedule-primary");
     this.editor.input.focus(); this.editor.input.setSelectionRange(this.selectionStart, this.selectionEnd);
   }
 

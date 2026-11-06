@@ -7,7 +7,9 @@ const moment = require('moment');
 class TFile { constructor(path) { this.path = path; } }
 class TFolder { constructor(path) { this.path = path; } }
 const notices = [];
+let language = 'zh';
 const api = {
+  getLanguage: () => language,
   TFile, TFolder, moment,
   normalizePath: value => value.replace(/\\/g, '/').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, ''),
   Plugin: class {}, ItemView: class {}, Modal: class {}, PluginSettingTab: class {}, Setting: class {},
@@ -264,6 +266,29 @@ const end = '<!-- obsidian-schedule-manager:end -->';
   failMove.plugin.saveData=normalSave;
   await failMove.plugin.moveEvent(stable.id,'2026-10-27','2026-10-28');
   assert.equal(failMove.plugin.data.events[0].date,'2026-10-28','Failed mutations do not block retries');
+  const translated = setup({ settings: { dailyNotesUseCore: false, dailyNotesFolder: '我的日记' } });
+  const translatedPath = '我的日记/2026-10-27.md';
+  translated.seed(translatedPath, '# 中文正文\n\n保留的手写内容\n');
+  await translated.plugin.addEvent({ ...draft(), startTime: '', endTime: '', participants: ['小王', '小李'] });
+  const savedEvents = JSON.stringify(translated.plugin.data.events);
+  language = 'en';
+  assert.equal(await translated.plugin.synchronizeDailyNotes(), true);
+  assert.match(translated.text(translatedPath), /## Schedule/);
+  assert.match(translated.text(translatedPath), /All day 产品评审/);
+  assert.match(translated.text(translatedPath), /Participants: 小王, 小李/);
+  assert.match(translated.text(translatedPath), /保留的手写内容/);
+  assert.equal(translated.text(translatedPath).split(start).length, 2, 'Language switches replace the original managed block');
+  assert.equal(JSON.stringify(translated.plugin.data.events), savedEvents, 'Language switches preserve all saved event fields');
+  assert.deepEqual(Array.from(translated.plugin.data.dailyNotePaths), [translatedPath], 'Language switches keep the configured note path');
+  const localizedWritesBefore = translated.writes.length;
+  await translated.plugin.synchronizeDailyNotes();
+  assert.equal(translated.writes.length, localizedWritesBefore, 'Localized synchronization remains idempotent');
+  language = 'zh';
+  await translated.plugin.synchronizeDailyNotes();
+  assert.match(translated.text(translatedPath), /## 日程/);
+  assert.equal(translated.text(translatedPath).includes('## Schedule'), false);
+  assert.equal(translated.text(translatedPath).split(start).length, 2);
+  console.log('PASS: switching diary language preserves note paths, user text, saved event fields, managed markers and sync idempotency.');
   console.log('PASS: daily note creation, core settings and templates, fallback path, CRUD and completion, date moves, shared paths, idempotency, existing content and CRLF preservation, concurrent edits, creation races, failures/retry, safe migration, disabled sync, tab reuse and legacy data.');
   console.log('PASS: cross-day note creation/completion/deletion, midnight boundary, moving from continuation day, shortening ranges, shared monthly notes and failed-save rollback/retry.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

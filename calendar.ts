@@ -1,10 +1,11 @@
+import { t, formatDate } from "./i18n";
 import type { ScheduleEvent } from "./main";
 
 export type CalendarMode = "month" | "week";
 export type Category = "work" | "meeting" | "client" | "delivery";
 export const CATEGORIES: { id: Category; label: string }[] = [
-  { id: "work", label: "工作" }, { id: "meeting", label: "会议" },
-  { id: "client", label: "客户" }, { id: "delivery", label: "交付" },
+  { id: "work", get label() { return t("work"); } }, { id: "meeting", get label() { return t("meeting"); } },
+  { id: "client", get label() { return t("client"); } }, { id: "delivery", get label() { return t("delivery"); } },
 ];
 export function categoryOf(event: Pick<ScheduleEvent, "category">): Category {
   return CATEGORIES.some(item => item.id === event.category) ? event.category as Category : "work";
@@ -40,13 +41,13 @@ export function weekNumber(date: Date): number {
     Date.UTC(first.getFullYear(), first.getMonth(), first.getDate())) / 604800000) + 1;
 }
 export function dayLabel(date: Date, long = true): string {
-  return new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric", weekday: long ? "long" : "short" }).format(date);
+  return formatDate(date, { month: "long", day: "numeric", weekday: long ? "long" : "short" });
 }
 export function timeRange(event: ScheduleEvent): string {
   if (endDateOf(event) !== event.date) {
-    return `${event.date}${event.startTime ? ` ${event.startTime}` : ""} → ${endDateOf(event)}${event.endTime ? ` ${event.endTime}` : ""}${isAllDay(event) ? " · 全天" : ""}`;
+    return `${event.date}${event.startTime ? ` ${event.startTime}` : ""} → ${endDateOf(event)}${event.endTime ? ` ${event.endTime}` : ""}${isAllDay(event) ? ` · ${t("allDay")}` : ""}`;
   }
-  if (!event.startTime) return event.endTime ? `截至 ${event.endTime}` : "全天";
+  if (!event.startTime) return event.endTime ? t("untilTime", { time: event.endTime }) : t("allDay");
   return event.startTime + (event.endTime ? ` – ${event.endTime}` : "");
 }
 export function minutes(time: string): number {
@@ -111,7 +112,7 @@ export function overlapsDates(event: ScheduleEvent, from: string, to: string): b
 }
 export function eventDates(event: ScheduleEvent): string[] {
   const end = endDateOf(event);
-  if (!validDate(event.date) || !validDate(end)) throw new Error("日程日期无效");
+  if (!validDate(event.date) || !validDate(end)) throw new Error(t("invalidDate"));
   const dates: string[] = [];
   const last = lastEventDate(event);
   for (let offset = 0; offset <= daysBetween(event.date, last); offset++) dates.push(dateKey(addDays(parseDate(event.date), offset)));
@@ -119,9 +120,9 @@ export function eventDates(event: ScheduleEvent): string[] {
 }
 export function dayTimeRange(event: ScheduleEvent, date: string): string {
   if (endDateOf(event) === event.date) return timeRange(event);
-  if (isAllDay(event)) return "全天 · 跨天";
+  if (isAllDay(event)) return `${t("allDay")} · ${t("multiDay")}`;
   const { start, end } = eventInterval(event, date);
-  return `${clockTime(start)} – ${end === 1440 ? "24:00" : clockTime(end)} · 跨天`;
+  return `${clockTime(start)} – ${end === 1440 ? "24:00" : clockTime(end)} · ${t("multiDay")}`;
 }
 export function durationInDates(event: ScheduleEvent, from: string, to: string): number {
   if (isAllDay(event) || !overlapsDates(event, from, to)) return 0;
@@ -134,18 +135,18 @@ export function durationInDates(event: ScheduleEvent, from: string, to: string):
   return minutesTotal / 60;
 }
 export function shiftedDates(event: ScheduleEvent, from: string, to: string): { date: string; endDate?: string } {
-  if (!validDate(from) || !validDate(to) || !occursOn(event, from)) throw new Error("移动的日期无效");
+  if (!validDate(from) || !validDate(to) || !occursOn(event, from)) throw new Error(t("invalidMoveDate"));
   const delta = daysBetween(from, to);
   const date = dateKey(addDays(parseDate(event.date), delta));
   const endDate = dateKey(addDays(parseDate(endDateOf(event)), delta));
-  if (!validDate(date) || !validDate(endDate)) throw new Error("移动后的日期超出范围");
+  if (!validDate(date) || !validDate(endDate)) throw new Error(t("moveOutOfRange"));
   return { date, endDate: event.endDate ? endDate : undefined };
 }
 export function validateEventRange(event: Pick<ScheduleEvent, "date" | "endDate" | "startTime" | "endTime">): void {
-  if (!validDate(event.date) || (event.endDate && !validDate(event.endDate))) throw new Error("请填写有效的开始日期和结束日期");
+  if (!validDate(event.date) || (event.endDate && !validDate(event.endDate))) throw new Error(t("validDatesRequired"));
   const end = event.endDate || event.date;
-  if (end < event.date) throw new Error("结束日期不能早于开始日期");
+  if (end < event.date) throw new Error(t("endBeforeStart"));
   if (event.startTime && event.endTime && end === event.date && minutes(event.endTime) <= minutes(event.startTime)) {
-    throw new Error("结束时间需要晚于开始时间；跨天日程请选择之后的结束日期");
+    throw new Error(t("endTimeOrder"));
   }
 }

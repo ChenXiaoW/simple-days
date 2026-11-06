@@ -198,6 +198,7 @@ button.schedule-overview-event { display: flex; width: 100%; text-align: left; j
 .schedule-detail-title { margin: 0 0 8px; font-size: 23px; line-height: 1.5; font-weight: 650; overflow-wrap: anywhere; }
 .schedule-detail-meta { display: flex; flex-direction: column; gap: 16px; padding: 0 0 22px; }
 .schedule-detail-row { display: grid; grid-template-columns: 18px 46px minmax(0, 1fr); align-items: start; gap: 10px; font-size: 13px; }
+.schedule-detail-modal:lang(en) .schedule-detail-row { grid-template-columns: 18px 84px minmax(0, 1fr); }
 .schedule-detail-row > .schedule-icon { color: var(--sc-muted); margin-top: 2px; }
 .schedule-detail-row > span:last-child { overflow-wrap: anywhere; white-space: pre-wrap; }
 .schedule-detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
