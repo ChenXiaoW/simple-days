@@ -26,6 +26,7 @@ class Setting {
   }
 }
 const api = {
+  requireApiVersion: () => true,
   getLanguage: () => 'zh',
   Plugin: class {}, ItemView: class {}, Modal: class {}, Notice: class {}, Setting,
   PluginSettingTab: class {

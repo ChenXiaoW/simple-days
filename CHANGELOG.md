@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.6
+
+- Guard the Obsidian 1.8.7 language API with the official requireApiVersion check, resolving the community review error while retaining the 1.7.2 minimum version.
+- Use the host Moment locale on older versions without calling the newer API, including when that export is unavailable.
+- Add regression coverage for Obsidian 1.7.2, 1.8.6, and the 1.8.7 language API boundary.
+
 ## 0.6.5
 
 - Follow Obsidian’s language setting throughout the calendar, sidebar, event dialogs, Markdown editor, settings, commands, and notices.

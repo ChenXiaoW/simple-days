@@ -5,8 +5,12 @@ const assert = require('node:assert/strict');
 
 let language = 'en';
 let legacyLocale = 'zh-cn';
+let appVersion = '1.14.4';
+let languageCalls = 0;
 const api = {
-  getLanguage: () => language,
+  requireApiVersion: minimum => minimum.split('.').reduce((comparison, part, index) =>
+    comparison || Number(appVersion.split('.')[index] || 0) - Number(part), 0) >= 0,
+  getLanguage: () => { languageCalls++; return language; },
   moment: { locale: () => legacyLocale },
   Plugin: class {}, ItemView: class {}, Modal: class {}, Notice: class {}, Setting: class {},
   PluginSettingTab: class {},
@@ -63,10 +67,20 @@ for (const variant of ['zh-CN', 'zh-cn', 'zh_TW', 'zh-TW']) {
 for (const fallback of ['en', 'en-GB', 'fr', 'ja', 'de', '']) {
   language = fallback; assert.equal(i.t('createEvent'), 'New event', fallback + ' uses English fallback');
 }
+appVersion = '1.8.7'; language = 'en'; legacyLocale = 'zh-cn';
+assert.equal(i.t('today'), 'Today', 'The new API is used starting at its introduction version');
+const callsBeforeLegacy = languageCalls;
+api.getLanguage = () => { throw new Error('The new API must never run on an older host'); };
+for (const version of ['1.7.2', '1.8.6']) {
+  appVersion = version;
+  legacyLocale = 'zh-cn'; assert.equal(i.t('today'), '今天', version + ' uses the host Moment locale');
+  legacyLocale = 'en'; assert.equal(i.t('today'), 'Today');
+  legacyLocale = 'fr'; assert.equal(i.t('today'), 'Today');
+}
+assert.equal(languageCalls, callsBeforeLegacy, 'Older versions never invoke getLanguage even when it is present');
 delete api.getLanguage;
-assert.equal(i.t('today'), '今天', 'Obsidian 1.7.x uses the host Moment locale');
-legacyLocale = 'en'; assert.equal(i.t('today'), 'Today');
-legacyLocale = 'fr'; assert.equal(i.t('today'), 'Today');
+appVersion = '1.7.2'; legacyLocale = 'zh-cn';
+assert.equal(i.t('today'), '今天', 'Older hosts without the new export still load and translate');
 assert.equal(i.dateKey(date), '2026-10-27', 'Storage dates are independent of display language');
 assert.equal(JSON.stringify(event), original, 'Formatting never translates or mutates user content');
 console.log('PASS: Obsidian language, English fallback, Chinese variants, pre-1.8.7 compatibility, localized dates/categories/settings/validation/diary blocks, safe interpolation and unchanged user data.');

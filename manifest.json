@@ -1,7 +1,7 @@
 {
   "id": "simple-days",
   "name": "Simple Days",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "minAppVersion": "1.7.2",
   "description": "Manage schedules in month and week views, write Markdown event notes, and sync events to daily notes.",
   "author": "ChenXiaoW",

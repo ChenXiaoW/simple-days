@@ -1,4 +1,4 @@
-import { getLanguage, moment } from "obsidian";
+import { getLanguage, moment, requireApiVersion } from "obsidian";
 
 const en = {
   scheduleTitle: "Schedule",
@@ -342,8 +342,8 @@ const zh: Record<TranslationKey, string> = {
 };
 
 export function uiLanguage(): "zh" | "en" {
-  // getLanguage was added in 1.8.7; older supported hosts expose their locale through Moment.
-  const language = typeof getLanguage === "function" ? getLanguage() : moment.locale();
+  // getLanguage was added in 1.8.7. Older supported hosts expose their language through Moment.
+  const language = requireApiVersion("1.8.7") ? getLanguage() : moment.locale();
   return /^zh(?:[-_]|$)/i.test(language) ? "zh" : "en";
 }
 

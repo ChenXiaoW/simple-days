@@ -2,7 +2,7 @@
 
 [English](README.md) · [GitHub 仓库](https://github.com/ChenXiaoW/simple-days) · [发布说明](RELEASING.md)
 
-公开发布版本为 **0.6.5**，插件 ID 为 `simple-days`，作者为 ChenXiaoW。界面跟随 Obsidian 的语言设置：中文环境显示中文，英文及暂未支持的其他语言显示英文。日历日期、星期、分类、弹窗、设置、命令、提示和日记生成内容均随之切换；日程标题、备注等用户内容及已配置的日记路径保持原样。修改 Obsidian 语言后请重启 Obsidian。最低要求 Obsidian 1.7.2。Obsidian 1.13 及以上版本支持在全局设置搜索中查找本插件设置。
+公开发布版本为 **0.6.6**，插件 ID 为 `simple-days`，作者为 ChenXiaoW。界面跟随 Obsidian 的语言设置：中文环境显示中文，英文及暂未支持的其他语言显示英文。日历日期、星期、分类、弹窗、设置、命令、提示和日记生成内容均随之切换；日程标题、备注等用户内容及已配置的日记路径保持原样。修改 Obsidian 语言后请重启 Obsidian。最低要求 Obsidian 1.7.2。Obsidian 1.13 及以上版本支持在全局设置搜索中查找本插件设置。
 
 
 ## v0.6.2 详情页直接勾选备注任务

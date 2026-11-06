@@ -9,6 +9,7 @@ class TFolder { constructor(path) { this.path = path; } }
 const notices = [];
 let language = 'zh';
 const api = {
+  requireApiVersion: () => true,
   getLanguage: () => language,
   TFile, TFolder, moment,
   normalizePath: value => value.replace(/\\/g, '/').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, ''),

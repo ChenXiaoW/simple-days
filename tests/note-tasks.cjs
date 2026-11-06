@@ -3,6 +3,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const api = {
+  requireApiVersion: () => true,
   getLanguage: () => 'zh',
   Plugin: class {}, ItemView: class {}, Modal: class {}, PluginSettingTab: class {},
   Setting: class {}, Notice: class {},
