@@ -2,15 +2,8 @@
 
 [English](README.md) · [GitHub 仓库](https://github.com/ChenXiaoW/simple-days) · [发布说明](RELEASING.md)
 
-公开发布版本为 **0.6.3**，插件 ID 为 `simple-days`，作者为 ChenXiaoW。沿用 v0.6.2 的功能，保留中文界面；最低要求 Obsidian 1.7.2。
+公开发布版本为 **0.6.3**，插件 ID 为 `simple-days`，作者为 ChenXiaoW。保留中文界面；最低要求 Obsidian 1.7.2。
 
-## 从原本地版本迁移
-
-先备份笔记库和旧插件的 `data.json`，禁用旧插件并关闭 Obsidian。将发行版的 `main.js`、`manifest.json`、`styles.css` 放到 `.obsidian/plugins/simple-days/`，再把 `.obsidian/plugins/obsidian-schedule-manager/data.json` 复制到新目录。重新打开 Obsidian 后启用 Simple Days，检查日程与日记配置。
-
-如果新目录已有数据，先单独备份；复制数据文件会替换它，不会自动合并。旧插件保持禁用，两者会更新同一日记区块。旧数据文件可保留作回退，快捷键可能需要重新绑定。
-
-Obsidian 日程插件：主编辑区月历 / 周时间轴，独立侧边栏概览，新增与详情弹窗，并自动同步到每日笔记。
 
 ## v0.6.2 详情页直接勾选备注任务
 
