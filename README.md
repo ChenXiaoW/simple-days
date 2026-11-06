@@ -1,1 +1,1 @@
-# simple-day
+# simple-days
