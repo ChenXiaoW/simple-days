@@ -2,7 +2,7 @@
 
 [English](README.md) · [GitHub 仓库](https://github.com/ChenXiaoW/simple-days) · [发布说明](RELEASING.md)
 
-公开发布版本为 **0.6.3**，插件 ID 为 `simple-days`，作者为 ChenXiaoW。保留中文界面；最低要求 Obsidian 1.7.2。
+公开发布版本为 **0.6.4**，插件 ID 为 `simple-days`，作者为 ChenXiaoW。保留中文界面；最低要求 Obsidian 1.7.2。Obsidian 1.13 及以上版本支持在全局设置搜索中查找本插件设置。
 
 
 ## v0.6.2 详情页直接勾选备注任务

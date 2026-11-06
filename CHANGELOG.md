@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.4
+
+- Generate and cryptographically verify GitHub build provenance attestations for all three release files.
+- Replace important CSS declarations with scoped selectors, preserving calendar, drag, notes, and mobile styles.
+- Make settings searchable on Obsidian 1.13 and later, with native setting headings on older versions.
+- Validate stored data before use and leave existing files intact if a schedule cannot be read.
+- Handle rejected promises with unknown error types, use cross-window pointer checks, and remove an unused import.
+
 ## 0.6.3
 
 - Prepare public distribution as **Simple Days** with plugin ID `simple-days` and author ChenXiaoW.

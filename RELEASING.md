@@ -15,13 +15,13 @@ Repository: https://github.com/ChenXiaoW/simple-days
 After pushing the reviewed source to the default branch, create a tag matching the manifest version exactly:
 
 ```sh
-git tag 0.6.3
-git push origin 0.6.3
+git tag 0.6.4
+git push origin 0.6.4
 ```
 
-The release workflow builds and checks the tag, then creates a **draft** release with `main.js`, `manifest.json`, and `styles.css` attached separately. Review the draft in GitHub, enter release notes, and publish it as a normal release. A draft or a ZIP file alone is insufficient for installing through Obsidian.
+The release workflow builds and checks the tag, generates GitHub provenance attestations for `main.js`, `manifest.json`, and `styles.css`, and verifies their signatures before creating a **draft** release with those files attached separately. Review the draft in GitHub, enter release notes, and publish it as a normal release. A draft or a ZIP file alone is insufficient for installing through Obsidian.
 
-You can also create the release manually and upload those three built files. The tag must be `0.6.3`, not `v0.6.3`. Keep `manifest.json` committed at the repository root as well as attached to the release.
+Use the workflow to retain verified provenance; uploading replacement files manually can break the link to the attested digests. The tag must be `0.6.4`, not `v0.6.4`. Keep `manifest.json` committed at the repository root as well as attached to the release.
 
 For later releases, increment the version in `manifest.json`, `package.json`, and the lockfile; add the new version-to-minimum-Obsidian mapping to `versions.json`; update the changelog; then repeat these checks.
 

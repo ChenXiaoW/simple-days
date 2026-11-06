@@ -9,7 +9,7 @@ import {
 import { DailyNotesService, type DailyNoteSettings } from "./daily-notes";
 import { ScheduleView, VIEW_TYPE_SCHEDULE } from "./schedule-view";
 import { OverviewView, VIEW_TYPE_OVERVIEW } from "./overview-view";
-import { shiftedDates, validateEventRange, type Category } from "./calendar";
+import { CATEGORIES, shiftedDates, validateEventRange, type Category } from "./calendar";
 
 
 export interface ScheduleEvent {
@@ -46,8 +46,30 @@ const DEFAULT_SETTINGS: ScheduleSettings = {
   dailyNotesFormat: "YYYY-MM-DD",
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function storedData(value: unknown): Record<string, unknown> {
+  if (value === null || value === undefined) return {};
+  if (!isRecord(value)) throw new Error("日程数据格式不正确，未修改已保存的文件。请检查备份。");
+  return value;
+}
+
+function isScheduleEvent(value: unknown): value is ScheduleEvent {
+  if (!isRecord(value)) return false;
+  return ["id", "title", "date", "startTime", "endTime", "notes", "location"].every(key => typeof value[key] === "string")
+    && typeof value.completed === "boolean"
+    && (value.endDate === undefined || typeof value.endDate === "string")
+    && (value.category === undefined || CATEGORIES.some(category => category.id === value.category))
+    && ["tags", "participants"].every(key => {
+      const items: unknown = value[key];
+      return items === undefined || (Array.isArray(items) && items.every((item: unknown) => typeof item === "string"));
+    });
+}
+
 export default class ScheduleManagerPlugin extends Plugin {
-  settings: ScheduleSettings = DEFAULT_SETTINGS;
+  settings: ScheduleSettings = { ...DEFAULT_SETTINGS };
   data: ScheduleData = { events: [], dailyNotePaths: [] };
   private openingTab: Promise<WorkspaceLeaf> | null = null;
   private dailyNotes: DailyNotesService | null = null;
@@ -185,7 +207,15 @@ export default class ScheduleManagerPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const value: unknown = await this.loadData();
+    const raw = storedData(value);
+    this.settings = {
+      dateFormat: raw.dateFormat === "short" ? "short" : DEFAULT_SETTINGS.dateFormat,
+      dailyNotesEnabled: typeof raw.dailyNotesEnabled === "boolean" ? raw.dailyNotesEnabled : DEFAULT_SETTINGS.dailyNotesEnabled,
+      dailyNotesUseCore: typeof raw.dailyNotesUseCore === "boolean" ? raw.dailyNotesUseCore : DEFAULT_SETTINGS.dailyNotesUseCore,
+      dailyNotesFolder: typeof raw.dailyNotesFolder === "string" ? raw.dailyNotesFolder : DEFAULT_SETTINGS.dailyNotesFolder,
+      dailyNotesFormat: typeof raw.dailyNotesFormat === "string" ? raw.dailyNotesFormat : DEFAULT_SETTINGS.dailyNotesFormat,
+    };
   }
 
   async saveSettings(): Promise<void> {
@@ -194,11 +224,19 @@ export default class ScheduleManagerPlugin extends Plugin {
   }
 
   async loadDataStore(): Promise<void> {
-    const raw = await this.loadData();
+    const value: unknown = await this.loadData();
+    const raw = storedData(value);
+    if (raw.events !== undefined && !Array.isArray(raw.events)) {
+      throw new Error("日程列表格式不正确，未修改已保存的文件。请检查备份。");
+    }
+    const events: unknown[] = Array.isArray(raw.events) ? raw.events : [];
+    if (!events.every(isScheduleEvent)) {
+      throw new Error("存在无法读取的日程，未修改已保存的文件。请检查备份。");
+    }
+    const paths: unknown[] = Array.isArray(raw.dailyNotePaths) ? raw.dailyNotePaths : [];
     this.data = {
-      events: Array.isArray(raw?.events) ? raw.events : [],
-      dailyNotePaths: Array.isArray(raw?.dailyNotePaths)
-        ? raw.dailyNotePaths.filter((path: unknown) => typeof path === "string") : [],
+      events,
+      dailyNotePaths: paths.filter((path): path is string => typeof path === "string"),
     };
   }
 
@@ -292,6 +330,12 @@ export default class ScheduleManagerPlugin extends Plugin {
   }
 }
 
+interface ScheduleSettingSection {
+  type: "group";
+  heading: string;
+  items: { name: string; desc: string; render: (setting: Setting) => void }[];
+}
+
 class ScheduleSettingTab extends PluginSettingTab {
   plugin: ScheduleManagerPlugin;
 
@@ -300,64 +344,87 @@ class ScheduleSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.createEl("h2", { text: "日程管理" });
-    new Setting(containerEl)
-      .setName("日期显示")
-      .setDesc("选择日程标题中的日期格式")
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("long", "长格式（周二，10月27日）")
-          .addOption("short", "短格式（周二 10月27日）")
-          .setValue(this.plugin.settings.dateFormat)
-          .onChange(async (value) => {
-            this.plugin.settings.dateFormat = value as ScheduleSettings["dateFormat"];
+  getSettingDefinitions(): ScheduleSettingSection[] {
+    return [{
+      type: "group",
+      heading: "日程管理",
+      items: [{
+        name: "日期显示",
+        desc: "选择日程标题中的日期格式",
+        render: setting => {
+          setting.addDropdown(dropdown => dropdown
+            .addOption("long", "长格式（周二，10月27日）")
+            .addOption("short", "短格式（周二 10月27日）")
+            .setValue(this.plugin.settings.dateFormat)
+            .onChange(async value => {
+              this.plugin.settings.dateFormat = value === "short" ? "short" : "long";
+              await this.plugin.saveSettings();
+            }));
+        },
+      }],
+    }, {
+      type: "group",
+      heading: "日记联动",
+      items: [{
+        name: "自动同步到日记",
+        desc: "新增、修改、完成和删除日程时，更新当天日记中的日程区块。日记正文保留；在日记中修改不会反向更新日历。",
+        render: setting => {
+          setting.addToggle(toggle => toggle.setValue(this.plugin.settings.dailyNotesEnabled).onChange(async enabled => {
+            this.plugin.settings.dailyNotesEnabled = enabled;
             await this.plugin.saveSettings();
-            this.plugin.app.workspace.getLeavesOfType(VIEW_TYPE_SCHEDULE).forEach((leaf) => {
-              if (leaf.view instanceof ScheduleView) leaf.view.render();
-            });
-          }),
-      );
-    containerEl.createEl("h3", { text: "日记联动" });
-    new Setting(containerEl)
-      .setName("自动同步到日记")
-      .setDesc("新增、修改、完成和删除日程时，更新当天日记中的日程区块。日记正文保留；在日记中修改不会反向更新日历。")
-      .addToggle((toggle) => toggle.setValue(this.plugin.settings.dailyNotesEnabled).onChange(async (enabled) => {
-        this.plugin.settings.dailyNotesEnabled = enabled;
-        await this.plugin.saveSettings();
-        if (enabled) await this.plugin.synchronizeDailyNotes(true);
-      }));
-    new Setting(containerEl)
-      .setName("使用 Obsidian 日记配置")
-      .setDesc("读取核心“日记”插件的目录、日期格式和模板。未配置时使用下方目录和格式。")
-      .addToggle((toggle) => toggle.setValue(this.plugin.settings.dailyNotesUseCore).onChange(async (enabled) => {
-        this.plugin.settings.dailyNotesUseCore = enabled;
-        await this.plugin.saveSettings();
-        this.display();
-      }));
-    new Setting(containerEl)
-      .setName("日记目录")
-      .setDesc("备用或自定义的库内目录。默认为“日记”，留空表示库根目录。")
-      .addText((text) => text.setPlaceholder("日记").setValue(this.plugin.settings.dailyNotesFolder).onChange(async (value) => {
-        this.plugin.settings.dailyNotesFolder = value;
-        await this.plugin.saveSettings();
-      }));
-    new Setting(containerEl)
-      .setName("日记日期格式")
-      .setDesc("备用或自定义的文件名格式，例如 YYYY-MM-DD；修改配置后点击下方按钮补同步。")
-      .addText((text) => text.setPlaceholder("YYYY-MM-DD").setValue(this.plugin.settings.dailyNotesFormat).onChange(async (value) => {
-        this.plugin.settings.dailyNotesFormat = value;
-        await this.plugin.saveSettings();
-      }));
-    new Setting(containerEl)
-      .setName("同步已有日程")
-      .setDesc("补齐日记中的日程，并更新移动日期、删除日程或修改目录后留下的旧区块。")
-      .addButton((button) => button.setButtonText("立即同步").onClick(async () => {
-        button.setDisabled(true);
-        try { await this.plugin.synchronizeDailyNotes(true); }
-        finally { button.setDisabled(false); }
-      }));
+            if (enabled) await this.plugin.synchronizeDailyNotes(true);
+          }));
+        },
+      }, {
+        name: "使用 Obsidian 日记配置",
+        desc: "读取核心“日记”插件的目录、日期格式和模板。未配置时使用下方目录和格式。",
+        render: setting => {
+          setting.addToggle(toggle => toggle.setValue(this.plugin.settings.dailyNotesUseCore).onChange(async enabled => {
+            this.plugin.settings.dailyNotesUseCore = enabled;
+            await this.plugin.saveSettings();
+          }));
+        },
+      }, {
+        name: "日记目录",
+        desc: "备用或自定义的库内目录。默认为“日记”，留空表示库根目录。",
+        render: setting => {
+          setting.addText(text => text.setPlaceholder("日记").setValue(this.plugin.settings.dailyNotesFolder).onChange(async value => {
+            this.plugin.settings.dailyNotesFolder = value;
+            await this.plugin.saveSettings();
+          }));
+        },
+      }, {
+        name: "日记日期格式",
+        desc: "备用或自定义的文件名格式，例如 YYYY-MM-DD；修改配置后点击下方按钮补同步。",
+        render: setting => {
+          setting.addText(text => text.setPlaceholder("YYYY-MM-DD").setValue(this.plugin.settings.dailyNotesFormat).onChange(async value => {
+            this.plugin.settings.dailyNotesFormat = value;
+            await this.plugin.saveSettings();
+          }));
+        },
+      }, {
+        name: "同步已有日程",
+        desc: "补齐日记中的日程，并更新移动日期、删除日程或修改目录后留下的旧区块。",
+        render: setting => {
+          setting.addButton(button => button.setButtonText("立即同步").onClick(async () => {
+            button.setDisabled(true);
+            try { await this.plugin.synchronizeDailyNotes(true); }
+            finally { button.setDisabled(false); }
+          }));
+        },
+      }],
+    }];
+  }
+
+  // Obsidian before 1.13 uses this fallback; newer versions render and index the definitions above.
+  display(): void {
+    this.containerEl.empty();
+    for (const section of this.getSettingDefinitions()) {
+      new Setting(this.containerEl).setName(section.heading).setHeading();
+      for (const definition of section.items) {
+        const setting = new Setting(this.containerEl).setName(definition.name).setDesc(definition.desc);
+        definition.render(setting);
+      }
+    }
   }
 }

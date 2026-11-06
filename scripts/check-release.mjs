@@ -27,6 +27,7 @@ for (const file of ["main.js", "manifest.json", "styles.css", "README.md", "READ
   assert.ok(readFileSync(new URL(`../${file}`, import.meta.url), "utf8").trim(), `Missing or empty ${file}`);
 }
 assert.ok(!existsSync(new URL("../data.json", import.meta.url)), "Personal schedule data must stay outside the release repository");
+assert.ok(!/!\s*important\b/i.test(readFileSync(new URL("../styles.css", import.meta.url), "utf8")), "Use scoped selectors instead of important declarations");
 const bundle = readFileSync(new URL("../main.js", import.meta.url), "utf8");
 const dependencies = [...bundle.matchAll(/require\(["']([^"']+)["']\)/g)].map(match => match[1]);
 assert.ok(dependencies.length > 0 && dependencies.every(name => name === "obsidian"), "Runtime dependencies must come from Obsidian");

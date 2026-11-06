@@ -1,7 +1,7 @@
 import { ItemView, type WorkspaceLeaf, type ViewStateResult } from "obsidian";
 import type ScheduleManagerPlugin from "./main";
 import type { ScheduleEvent } from "./main";
-import { addDays, dateKey, parseDate, validDate, dayLabel, weekNumber, sortEvents, startOfWeek, categoryOf, categoryLabel, timeRange,
+import { addDays, dateKey, parseDate, validDate, weekNumber, sortEvents, startOfWeek, categoryOf, categoryLabel, timeRange,
   occursOn, overlapsDates, dayTimeRange } from "./calendar";
 import { ScheduleEditorModal, ScheduleDetailModal, newDraft } from "./schedule-modals";
 import { badge, button, icon } from "./ui";

@@ -104,6 +104,8 @@ npm run check:release
 
 The TypeScript files are bundled into `main.js`. Obsidian provides the runtime API. The tests use Obsidian API mocks; they do not replace testing in a real vault.
 
+Starting with 0.6.4, the release workflow generates and verifies GitHub build provenance attestations for all three install files. To verify a downloaded file yourself, use `gh attestation verify main.js --repo ChenXiaoW/simple-days` (replace the filename to check the other assets).
+
 See [Releasing](RELEASING.md) for the GitHub release and community directory submission steps, and [Changelog](CHANGELOG.md) for version history.
 
 ## License

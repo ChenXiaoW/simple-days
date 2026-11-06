@@ -15,7 +15,7 @@ export class MarkdownNotesPreview {
       event.preventDefault(); event.stopPropagation();
       // Notes belong to an event rather than a Markdown file; resolve links from the vault root.
       void this.app.workspace.openLinkText(path, "", event.ctrlKey || event.metaKey)
-        .catch(error => new Notice(`无法打开链接：${error.message}`));
+        .catch((error: unknown) => new Notice(`无法打开链接：${error instanceof Error ? error.message : String(error)}`));
     });
   }
 

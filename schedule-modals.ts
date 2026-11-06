@@ -81,29 +81,34 @@ export class ScheduleEditorModal extends Modal {
     const footer = this.form.createDiv("schedule-modal-footer");
     button(footer, "取消", null, () => this.close());
     const save = button(footer, this.editingId ? "保存修改" : "保存日程", "check", () => {}, "schedule-primary"); save.type = "submit";
-    this.form.addEventListener("submit", async evt => {
-      evt.preventDefault(); if (this.saving) return;
-      const draft = this.snapshot(); draft.title = draft.title.trim(); draft.location = draft.location.trim();
-      if (!draft.title || !validDate(draft.date)) { error.setText("请填写标题和有效日期"); return; }
-      try { validateEventRange(draft); }
-      catch (cause) { error.setText((cause as Error).message); return; }
-      if (!allDay.checked && (!draft.startTime || !draft.endTime)) { error.setText("请填写开始和结束时间，或勾选“全天”"); return; }
-      error.empty(); this.saving = true;
-      const controls = Array.from(this.form.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLTextAreaElement | HTMLSelectElement>("input,button,textarea,select"));
-      const disabled = controls.map(control => control.disabled); controls.forEach(control => control.disabled = true);
-      save.setText("保存中…");
-      try {
-        if (this.editingId) await this.plugin.updateEvent(this.editingId, draft);
-        else await this.plugin.addEvent(draft);
-        this.saved = true; this.plugin.selectDate(parseDate(draft.date));
-        new Notice(this.editingId ? "日程已更新" : "日程已创建"); this.close();
-      } catch (cause) {
-        error.setText(`保存失败：${cause instanceof Error ? cause.message : String(cause)}`);
-      } finally {
-        this.saving = false; controls.forEach((control, index) => control.disabled = disabled[index]);
-        save.setText(this.editingId ? "保存修改" : "保存日程");
-      }
+    this.form.addEventListener("submit", evt => {
+      evt.preventDefault();
+      void this.submit(allDay, error, save);
     });
+  }
+
+  private async submit(allDay: HTMLInputElement, error: HTMLElement, save: HTMLButtonElement): Promise<void> {
+    if (this.saving) return;
+    const draft = this.snapshot(); draft.title = draft.title.trim(); draft.location = draft.location.trim();
+    if (!draft.title || !validDate(draft.date)) { error.setText("请填写标题和有效日期"); return; }
+    try { validateEventRange(draft); }
+    catch (cause) { error.setText(cause instanceof Error ? cause.message : String(cause)); return; }
+    if (!allDay.checked && (!draft.startTime || !draft.endTime)) { error.setText("请填写开始和结束时间，或勾选“全天”"); return; }
+    error.empty(); this.saving = true;
+    const controls = Array.from(this.form.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLTextAreaElement | HTMLSelectElement>("input,button,textarea,select"));
+    const disabled = controls.map(control => control.disabled); controls.forEach(control => control.disabled = true);
+    save.setText("保存中…");
+    try {
+      if (this.editingId) await this.plugin.updateEvent(this.editingId, draft);
+      else await this.plugin.addEvent(draft);
+      this.saved = true; this.plugin.selectDate(parseDate(draft.date));
+      new Notice(this.editingId ? "日程已更新" : "日程已创建"); this.close();
+    } catch (cause) {
+      error.setText(`保存失败：${cause instanceof Error ? cause.message : String(cause)}`);
+    } finally {
+      this.saving = false; controls.forEach((control, index) => control.disabled = disabled[index]);
+      save.setText(this.editingId ? "保存修改" : "保存日程");
+    }
   }
   onClose(): void { this.notesEditor?.destroy(); this.notesEditor = null; this.closed(); }
 }
@@ -118,7 +123,7 @@ class DeleteScheduleModal extends Modal {
     const remove = button(footer, "删除日程", "trash-2", () => {
       remove.disabled = true;
       void this.plugin.removeEvent(this.event.id).then(() => { this.deleted(); this.close(); new Notice("日程已删除"); })
-        .catch(error => { new Notice(`删除失败：${error.message}`); remove.disabled = false; });
+        .catch((error: unknown) => { new Notice(`删除失败：${error instanceof Error ? error.message : String(error)}`); remove.disabled = false; });
     }, "schedule-danger");
   }
 }
@@ -176,7 +181,7 @@ export class ScheduleDetailModal extends Modal {
     const complete = button(right, event.completed ? "恢复待办" : "标记完成", "check-circle-2", () => {
       complete.disabled = true;
       void this.plugin.updateEvent(event.id, { completed: !event.completed }).then(() => this.render())
-        .catch(error => { new Notice(`更新失败：${error.message}`); complete.disabled = false; });
+        .catch((error: unknown) => { new Notice(`更新失败：${error instanceof Error ? error.message : String(error)}`); complete.disabled = false; });
     });
     button(right, "编辑日程", "pencil", () => {
       this.close(); new ScheduleEditorModal(this.plugin, { ...this.event }, event.id).open();

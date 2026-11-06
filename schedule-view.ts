@@ -223,7 +223,7 @@ export class ScheduleView extends ItemView {
         slot.empty();
         slot.style.height = `${hourHeight / 2}px`; slot.dataset.minute = String(minute);
         slot.addEventListener("click", evt => {
-          if (evt.detail === 0 || (evt instanceof PointerEvent && evt.pointerType === "touch")) {
+          if (evt.detail === 0 || (evt.instanceOf(PointerEvent) && evt.pointerType === "touch")) {
             this.openEditor(undefined, { date: key, startTime: clockTime(minute), endTime: clockTime(minute + 60) });
           }
         });
