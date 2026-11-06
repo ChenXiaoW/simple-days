@@ -1,0 +1,14 @@
+node_modules/
+main.js
+*.js.map
+data.json
+.obsidian/
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
+dist/

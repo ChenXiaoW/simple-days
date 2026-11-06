@@ -1,0 +1,30 @@
+{
+  "name": "simple-days",
+  "version": "0.6.3",
+  "description": "A calendar and daily-note schedule manager for Obsidian.",
+  "license": "MIT",
+  "author": "ChenXiaoW",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ChenXiaoW/simple-days.git"
+  },
+  "homepage": "https://github.com/ChenXiaoW/simple-days#readme",
+  "bugs": {
+    "url": "https://github.com/ChenXiaoW/simple-days/issues"
+  },
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "dev": "node esbuild.mjs --watch",
+    "test": "node tests/daily-notes.cjs && node tests/calendar.cjs && node tests/tabs.cjs && node tests/note-tasks.cjs",
+    "typecheck": "tsc --noEmit",
+    "check:release": "node scripts/check-release.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.7.2"
+  }
+}
