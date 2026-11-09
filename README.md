@@ -84,6 +84,14 @@ The legacy marker names are intentional. Moving, shortening, completing, or dele
 
 All schedules and settings are stored locally in `<vault>/.obsidian/plugins/simple-days/data.json`. Include that file in your backups. The plugin does not send schedule data to a server and does not collect telemetry. Markdown notes may contain remote images or other embeds, which can contact their hosts when rendered.
 
+## Syncing between devices
+
+Include `.obsidian/plugins/simple-days/data.json` in your sync configuration. It holds schedules, Markdown notes, completion states, and settings; syncing only daily Markdown files cannot populate the calendar because daily-note synchronization is one-way. Some sync tools exclude hidden folders or plugin data by default. Use the same plugin ID and version on each device.
+
+External data changes refresh the calendar and sidebar automatically. Returning to Obsidian or opening a calendar checks for updates. Mobile also checks every 15 seconds while the app is visible and a calendar or overview is open. After a pull, you can run **Simple Days: Reload schedules from disk** to check immediately.
+
+Reloading reads and validates one complete snapshot without writing it back or updating daily notes. A missing, incomplete, or invalid file keeps the currently loaded data and shows a notice. This does not provide field-by-field merging for simultaneous edits on different devices; finish syncing before editing on another device.
+
 ## Mobile support and limitations
 
 The plugin is enabled for mobile and has responsive layouts and touch creation/editing. Desktop drag and drop and textarea resizing are not promised on touch devices; edit the dates or use the expanded notes editor instead. Android and iOS device testing is still pending; existing automated checks use API mocks and browser touch emulation.

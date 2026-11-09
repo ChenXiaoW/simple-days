@@ -2,6 +2,10 @@ import { getLanguage, moment, requireApiVersion } from "obsidian";
 
 const en = {
   scheduleTitle: "Schedule",
+  reloadCommand: "Reload schedules from disk",
+  incompleteRemoteData: "The synced data file is missing or incomplete. Wait for synchronization to finish and try again.",
+  reloadFailed: "Unable to reload synced schedules: {error}. The current schedules were kept.",
+  reloadSuccess: "Reloaded schedules: {count}. If events are missing, check that your sync tool includes the plugin's data.json.",
   overviewTitle: "Schedule overview",
   openSchedule: "Open schedule",
   openOverview: "Open schedule overview",
@@ -173,6 +177,10 @@ const en = {
 type TranslationKey = keyof typeof en;
 const zh: Record<TranslationKey, string> = {
   scheduleTitle: "日程管理",
+  reloadCommand: "重新加载同步后的日程",
+  incompleteRemoteData: "同步数据文件尚未就绪或不完整，请等待同步完成后重试",
+  reloadFailed: "重新加载同步日程失败：{error}。当前日程已保留。",
+  reloadSuccess: "已重新加载 {count} 个日程。若有缺失，请检查同步工具是否包含插件的 data.json。",
   overviewTitle: "日程概览",
   openSchedule: "打开日程管理",
   openOverview: "打开日程概览",

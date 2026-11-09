@@ -4,6 +4,7 @@ import {
   Notice,
   Plugin,
   PluginSettingTab,
+  Platform,
   Setting,
   WorkspaceLeaf,
 } from "obsidian";
@@ -69,6 +70,24 @@ function isScheduleEvent(value: unknown): value is ScheduleEvent {
     });
 }
 
+function readSettings(raw: Record<string, unknown>): ScheduleSettings {
+  return {
+    dateFormat: raw.dateFormat === "short" ? "short" : DEFAULT_SETTINGS.dateFormat,
+    dailyNotesEnabled: typeof raw.dailyNotesEnabled === "boolean" ? raw.dailyNotesEnabled : DEFAULT_SETTINGS.dailyNotesEnabled,
+    dailyNotesUseCore: typeof raw.dailyNotesUseCore === "boolean" ? raw.dailyNotesUseCore : DEFAULT_SETTINGS.dailyNotesUseCore,
+    dailyNotesFolder: typeof raw.dailyNotesFolder === "string" ? raw.dailyNotesFolder : DEFAULT_SETTINGS.dailyNotesFolder,
+    dailyNotesFormat: typeof raw.dailyNotesFormat === "string" ? raw.dailyNotesFormat : DEFAULT_SETTINGS.dailyNotesFormat,
+  };
+}
+
+function readSchedules(raw: Record<string, unknown>): ScheduleData {
+  if (raw.events !== undefined && !Array.isArray(raw.events)) throw new Error(t("invalidEventList"));
+  const events: unknown[] = Array.isArray(raw.events) ? raw.events : [];
+  if (!events.every(isScheduleEvent)) throw new Error(t("unreadableEvents"));
+  const paths: unknown[] = Array.isArray(raw.dailyNotePaths) ? raw.dailyNotePaths : [];
+  return { events, dailyNotePaths: paths.filter((path): path is string => typeof path === "string") };
+}
+
 export default class ScheduleManagerPlugin extends Plugin {
   settings: ScheduleSettings = { ...DEFAULT_SETTINGS };
   data: ScheduleData = { events: [], dailyNotePaths: [] };
@@ -76,10 +95,14 @@ export default class ScheduleManagerPlugin extends Plugin {
   private dailyNotes: DailyNotesService | null = null;
   private syncQueue: Promise<unknown> = Promise.resolve();
   private mutationQueue: Promise<unknown> = Promise.resolve();
+  private reloadPending: Promise<boolean> | null = null;
+  private lastReloadError = "";
 
   async onload(): Promise<void> {
-    await this.loadSettings();
-    await this.loadDataStore();
+    const value: unknown = await this.loadData();
+    const raw = storedData(value);
+    this.data = readSchedules(raw);
+    this.settings = readSettings(raw);
 
     this.registerView(VIEW_TYPE_SCHEDULE, (leaf) => new ScheduleView(leaf, this));
     this.registerView(VIEW_TYPE_OVERVIEW, (leaf) => new OverviewView(leaf, this));
@@ -117,6 +140,21 @@ export default class ScheduleManagerPlugin extends Plugin {
 
     this.addSettingTab(new ScheduleSettingTab(this.app, this));
     this.addCommand({
+      id: "reload-schedule-data", name: t("reloadCommand"),
+      callback: () => { void this.reloadFromDisk(true); },
+    });
+    this.registerDomEvent(document, "visibilitychange", () => {
+      if (document.visibilityState === "visible") void this.reloadFromDisk();
+    });
+    this.registerDomEvent(window, "focus", () => { void this.reloadFromDisk(); });
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+      if (this.hasScheduleView()) void this.reloadFromDisk();
+    }));
+    // Some Android sync tools do not emit config-file change events while the view stays open.
+    if (Platform.isMobile) this.registerInterval(window.setInterval(() => {
+      if (document.visibilityState === "visible" && this.hasScheduleView()) void this.reloadFromDisk();
+    }, 15000));
+    this.addCommand({
       id: "sync-daily-notes",
       name: t("syncCommand"),
       callback: () => void this.synchronizeDailyNotes(true),
@@ -126,6 +164,46 @@ export default class ScheduleManagerPlugin extends Plugin {
         void this.synchronizeDailyNotes();
       }
     });
+  }
+
+  async onExternalSettingsChange(): Promise<void> {
+    await this.reloadFromDisk();
+  }
+
+  private hasScheduleView(): boolean {
+    return [VIEW_TYPE_SCHEDULE, VIEW_TYPE_OVERVIEW].some(type => this.app.workspace.getLeavesOfType(type).length > 0);
+  }
+
+  async reloadFromDisk(notify = false): Promise<boolean> {
+    if (!this.reloadPending) {
+      const task = this.mutationQueue.then(async () => {
+        // A diary sync also persists plugin data. Finish earlier writes before reading the remote snapshot.
+        await this.syncQueue;
+        const value: unknown = await this.loadData();
+        if (value == null && !notify && !this.data.events.length && !this.data.dailyNotePaths.length) return false;
+        // Sync tools may temporarily remove or truncate the file while replacing it.
+        if (!isRecord(value) || !Array.isArray(value.events)) throw new Error(t("incompleteRemoteData"));
+        const data = readSchedules(value);
+        const settings = readSettings(value);
+        const changed = JSON.stringify({ ...this.settings, ...this.data }) !== JSON.stringify({ ...settings, ...data });
+        this.data = data;
+        this.settings = settings;
+        this.lastReloadError = "";
+        if (changed) this.refreshViews();
+        // Reading remote data must not write it back or regenerate daily notes during an ongoing pull.
+        return true;
+      });
+      this.mutationQueue = task.catch(() => undefined);
+      this.reloadPending = task.catch((error: unknown) => {
+        const message = errorMessage(error);
+        if (notify || message !== this.lastReloadError) new Notice(t("reloadFailed", { error: message }), 10000);
+        this.lastReloadError = message;
+        return false;
+      }).finally(() => { this.reloadPending = null; });
+    }
+    const success = await this.reloadPending;
+    if (notify && success) new Notice(t("reloadSuccess", { count: this.data.events.length }));
+    return success;
   }
 
   isMainLeaf(leaf: WorkspaceLeaf): boolean {
@@ -210,13 +288,7 @@ export default class ScheduleManagerPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const value: unknown = await this.loadData();
     const raw = storedData(value);
-    this.settings = {
-      dateFormat: raw.dateFormat === "short" ? "short" : DEFAULT_SETTINGS.dateFormat,
-      dailyNotesEnabled: typeof raw.dailyNotesEnabled === "boolean" ? raw.dailyNotesEnabled : DEFAULT_SETTINGS.dailyNotesEnabled,
-      dailyNotesUseCore: typeof raw.dailyNotesUseCore === "boolean" ? raw.dailyNotesUseCore : DEFAULT_SETTINGS.dailyNotesUseCore,
-      dailyNotesFolder: typeof raw.dailyNotesFolder === "string" ? raw.dailyNotesFolder : DEFAULT_SETTINGS.dailyNotesFolder,
-      dailyNotesFormat: typeof raw.dailyNotesFormat === "string" ? raw.dailyNotesFormat : DEFAULT_SETTINGS.dailyNotesFormat,
-    };
+    this.settings = readSettings(raw);
   }
 
   async saveSettings(): Promise<void> {
@@ -227,18 +299,7 @@ export default class ScheduleManagerPlugin extends Plugin {
   async loadDataStore(): Promise<void> {
     const value: unknown = await this.loadData();
     const raw = storedData(value);
-    if (raw.events !== undefined && !Array.isArray(raw.events)) {
-      throw new Error(t("invalidEventList"));
-    }
-    const events: unknown[] = Array.isArray(raw.events) ? raw.events : [];
-    if (!events.every(isScheduleEvent)) {
-      throw new Error(t("unreadableEvents"));
-    }
-    const paths: unknown[] = Array.isArray(raw.dailyNotePaths) ? raw.dailyNotePaths : [];
-    this.data = {
-      events,
-      dailyNotePaths: paths.filter((path): path is string => typeof path === "string"),
-    };
+    this.data = readSchedules(raw);
   }
 
   async saveDataStore(): Promise<void> {

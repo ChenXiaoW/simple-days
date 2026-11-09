@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.7
+
+- Reload schedules and settings together when sync tools replace the plugin data file, and refresh both calendar and sidebar without restarting.
+- Check for pulled data when returning to the app or opening a calendar; on mobile, check every 15 seconds while the app is visible and a calendar or overview is open.
+- Add a command to reload schedules from disk. Remote reads never write the data back or regenerate daily notes.
+- Preserve the current schedules and settings if a pulled file is missing, incomplete, or invalid; avoid rebuilding unchanged views.
+- Add tests for external changes, Android lifecycle triggers, partial pulls, remote deletions, queued edits, and cleanup.
+
 ## 0.6.6
 
 - Guard the Obsidian 1.8.7 language API with the official requireApiVersion check, resolving the community review error while retaining the 1.7.2 minimum version.
