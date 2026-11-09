@@ -3,6 +3,7 @@ import { App, TFile, TFolder, moment, normalizePath } from "obsidian";
 import type momentFactory from "moment";
 import type { ScheduleEvent } from "./main";
 import { eventDates, dayTimeRange, endDateOf, timeRange } from "./calendar";
+import { BLOCK_START, BLOCK_END, parseDailySchedules, type DiaryScan } from "./daily-import";
 
 export interface DailyNoteSettings {
   dailyNotesEnabled: boolean;
@@ -22,8 +23,6 @@ export interface DailyNoteSyncResult {
   errors: string[];
 }
 
-const BLOCK_START = "<!-- obsidian-schedule-manager:start -->";
-const BLOCK_END = "<!-- obsidian-schedule-manager:end -->";
 const createMoment = moment as unknown as typeof momentFactory;
 
 function safeText(value: string): string {
@@ -209,5 +208,46 @@ export class DailyNotesService {
       .find((leaf) => leaf.getViewState().state?.file === file.path);
     if (existing) await this.app.workspace.revealLeaf(existing);
     else await this.app.workspace.getLeaf("tab").openFile(file, { active: true });
+  }
+
+  async scan(settings: DailyNoteSettings, progress: (done: number, total: number) => void = () => {}): Promise<DiaryScan> {
+    const config = await this.config(settings);
+    const folder = this.relativePath(config.folder);
+    // Read all Markdown files: another device may use a different Daily notes folder.
+    const files = this.app.vault.getMarkdownFiles();
+    const result: DiaryScan = { files: files.length, blocks: 0, candidates: [], issues: [] };
+    const dateForPath = (path: string): string => {
+      const relative = folder && path.startsWith(`${folder}/`) ? path.slice(folder.length + 1, -3) : path.slice(0, -3);
+      const tokens = config.format.replace(/\[[^\]]*\]/g, "");
+      // Never let Moment fill missing month/day fields using today's date.
+      if (/Y/.test(tokens) && /M/.test(tokens) && /D/.test(tokens)) {
+        for (const locale of [createMoment.locale(), "en", "zh-cn"]) {
+          const date = createMoment(relative, config.format, locale, true);
+          if (date.isValid()) return date.format("YYYY-MM-DD");
+        }
+      }
+      const basename = path.split("/").pop()?.replace(/\.md$/i, "") || "";
+      const date = createMoment(basename, "YYYY-MM-DD", true);
+      return date.isValid() ? date.format("YYYY-MM-DD") : "";
+    };
+    progress(0, files.length);
+    for (let offset = 0; offset < files.length; offset += 20) {
+      const batch = await Promise.all(files.slice(offset, offset + 20).map(async file => {
+        try {
+          const content = await this.app.vault.read(file);
+          if (!content.includes(BLOCK_START) && !content.includes(BLOCK_END)) return null;
+          return { ...parseDailySchedules(content, file.path, dateForPath(file.path)), marked: true };
+        } catch (error) {
+          return { candidates: [], issues: [{ path: file.path, line: 0, reason: errorMessage(error) }], marked: false };
+        }
+      }));
+      for (const parsed of batch) {
+        if (!parsed) continue;
+        if (parsed.marked) result.blocks++;
+        result.candidates.push(...parsed.candidates); result.issues.push(...parsed.issues);
+      }
+      progress(Math.min(offset + 20, files.length), files.length);
+    }
+    return result;
   }
 }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.8
+
+- Add a command and settings entry to preview and import/rebuild schedules from daily Markdown notes, including on mobile when plugin data was not synced.
+- Recover legacy Chinese and English schedule blocks, Markdown notes, completion states, locations, tags, participants, times, and full multi-day ranges; merge repeated daily occurrences.
+- Resolve dates from explicit headings, full ranges, configured daily-note paths, and ISO filenames without guessing missing days.
+- Preserve existing schedules and source files, skip duplicates, and report conflicts or unreadable entries. Legacy categories default to Work because the diary format does not store them.
+- Save recovered schedules in one queued batch, retain visible data on storage failure, and refresh the calendar and sidebar without rewriting daily notes.
+- Add importer regression tests and touch-preview checks alongside existing compatibility and community-review checks.
+
 ## 0.6.7
 
 - Reload schedules and settings together when sync tools replace the plugin data file, and refresh both calendar and sidebar without restarting.

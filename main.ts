@@ -12,6 +12,8 @@ import { DailyNotesService, type DailyNoteSettings } from "./daily-notes";
 import { ScheduleView, VIEW_TYPE_SCHEDULE } from "./schedule-view";
 import { OverviewView, VIEW_TYPE_OVERVIEW } from "./overview-view";
 import { CATEGORIES, shiftedDates, validateEventRange, type Category } from "./calendar";
+import { DailyImportModal } from "./daily-import-modal";
+import { planDailyImport, type DiaryCandidate, type DiaryScan, type ImportPlan } from "./daily-import";
 
 
 export interface ScheduleEvent {
@@ -139,6 +141,7 @@ export default class ScheduleManagerPlugin extends Plugin {
     });
 
     this.addSettingTab(new ScheduleSettingTab(this.app, this));
+    this.addCommand({ id: "import-from-daily-notes", name: t("importCommand"), callback: () => this.openDailyImport() });
     this.addCommand({
       id: "reload-schedule-data", name: t("reloadCommand"),
       callback: () => { void this.reloadFromDisk(true); },
@@ -310,6 +313,36 @@ export default class ScheduleManagerPlugin extends Plugin {
     return this.dailyNotes ?? (this.dailyNotes = new DailyNotesService(this.app));
   }
 
+  openDailyImport(): void { new DailyImportModal(this).open(); }
+
+  async scanDailyNotes(progress?: (done: number, total: number) => void): Promise<DiaryScan> {
+    await this.mutationQueue;
+    await this.syncQueue;
+    return this.getDailyNotes().scan(this.settings, progress);
+  }
+
+  async importDailySchedules(candidates: DiaryCandidate[]): Promise<ImportPlan> {
+    const task = this.mutationQueue.then(() => {
+      const recovery = this.syncQueue.then(async () => {
+        const plan = planDailyImport(candidates, this.data.events);
+        if (!plan.additions.length) return plan;
+        for (const candidate of plan.additions) validateEventRange(candidate.event);
+        const events = [...this.data.events, ...plan.additions.map(candidate => ({ ...candidate.event,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}` }))];
+        // Recovery only writes plugin data. Leave the source diaries and existing schedules intact.
+        await this.saveData({ ...this.settings, ...this.data, events });
+        this.data.events = events;
+        this.refreshViews();
+        return plan;
+      });
+      // A manual sync started during the save must wait for the recovered state.
+      this.syncQueue = recovery.catch(() => undefined);
+      return recovery;
+    });
+    this.mutationQueue = task.catch(() => undefined);
+    return task;
+  }
+
   async synchronizeDailyNotes(notify = false): Promise<boolean> {
     if (!this.settings.dailyNotesEnabled) {
       if (notify) new Notice(t("enableSyncFirst"));
@@ -463,6 +496,12 @@ class ScheduleSettingTab extends PluginSettingTab {
             this.plugin.settings.dailyNotesFormat = value;
             await this.plugin.saveSettings();
           }));
+        },
+      }, {
+        name: t("importCommand"),
+        desc: t("importSettingDesc"),
+        render: setting => {
+          setting.addButton(button => button.setButtonText(t("importOpen")).onClick(() => this.plugin.openDailyImport()));
         },
       }, {
         name: t("syncExisting"),

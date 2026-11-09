@@ -14,6 +14,7 @@ A schedule manager for Obsidian with month and week calendars, Markdown event no
 - Write Markdown notes with headings, checklists, links, tables, and code blocks. Expand the editor for longer notes.
 - Check individual Markdown tasks directly in event details. Task status is independent of event completion.
 - Sync events to the matching daily notes and open those notes from the calendar.
+- Preview and import schedules from daily notes when only Markdown files were synced to another device.
 - Use light and dark themes and responsive layouts.
 
 The interface follows Obsidian’s language setting: Chinese for Chinese settings and English for English or currently unsupported languages. Dates, weekdays, categories, settings, commands, notices, and generated daily-note labels follow the same language. Reload Obsidian after changing its language. User-entered event content and configured note paths are preserved. The plugin requires Obsidian 1.7.2 or later. It uses Obsidian APIs and browser APIs, with no Node.js or Electron APIs at runtime.
@@ -71,7 +72,7 @@ Checklists in event details save immediately and update synchronized daily notes
 
 Daily-note synchronization is enabled by default. The plugin reads the core Daily notes folder, date format, and template settings when available; otherwise it uses `日记/YYYY-MM-DD.md`. You can configure a different folder and date format in the plugin settings, or disable synchronization.
 
-Synchronization is one-way: **calendar → daily note**. Editing the generated block in a daily note does not update the calendar, and a later sync replaces that block. Your text outside these markers is preserved:
+Automatic synchronization runs **calendar → daily note**. Editing a daily note does not automatically update the calendar, and a later sync replaces the generated block. Explicit recovery from these blocks is available through the importer below. Your text outside these markers is preserved:
 
 ```markdown
 <!-- obsidian-schedule-manager:start -->
@@ -86,11 +87,22 @@ All schedules and settings are stored locally in `<vault>/.obsidian/plugins/simp
 
 ## Syncing between devices
 
-Include `.obsidian/plugins/simple-days/data.json` in your sync configuration. It holds schedules, Markdown notes, completion states, and settings; syncing only daily Markdown files cannot populate the calendar because daily-note synchronization is one-way. Some sync tools exclude hidden folders or plugin data by default. Use the same plugin ID and version on each device.
+For full device synchronization, include `.obsidian/plugins/simple-days/data.json`. It holds schedules, Markdown notes, completion states, categories, and settings. Some sync tools exclude hidden folders or plugin data by default. Use the same plugin ID and version on each device. If you only synced daily Markdown files, use the importer to recover schedules explicitly.
 
 External data changes refresh the calendar and sidebar automatically. Returning to Obsidian or opening a calendar checks for updates. Mobile also checks every 15 seconds while the app is visible and a calendar or overview is open. After a pull, you can run **Simple Days: Reload schedules from disk** to check immediately.
 
 Reloading reads and validates one complete snapshot without writing it back or updating daily notes. A missing, incomplete, or invalid file keeps the currently loaded data and shows a notice. This does not provide field-by-field merging for simultaneous edits on different devices; finish syncing before editing on another device.
+
+### Import / rebuild from daily notes
+
+1. Finish pulling your daily Markdown files to the device.
+2. Run **Simple Days: Import / rebuild schedules from daily notes**, or open the importer in the plugin's **Daily notes** settings.
+3. Select **Scan daily notes**. Review the new schedules, duplicate count, and skipped entries.
+4. Select **Import new schedules** to save them to the calendar and sidebar.
+
+Scanning and importing leave diary files unchanged. Existing schedules are preserved; importing the same entries again does not create duplicates. Both legacy Chinese and English schedule blocks are supported. Dates, complete multi-day ranges, times, completion state, location, tags, participants, and Markdown notes are recovered. Repeated occurrences across multiple daily notes are merged. Categories and original IDs are absent from the old diary format, so restored events receive new IDs and the Work category. The importer scans all Markdown files with the plugin's markers, including notes moved to another folder; ordinary checklists are ignored.
+
+Dates come from explicit `### YYYY-MM-DD` headings, complete multi-day ranges, the configured Daily notes filename format, or an ISO `YYYY-MM-DD.md` filename. For custom nested formats, check the Daily notes folder and format settings. Files named only by month need explicit day headings for single-day entries; the importer never guesses a missing day. Conflicting copies and unreadable entries are listed and skipped. Recovery adds missing schedules; it does not update or delete existing ones or establish automatic two-way synchronization. Complete recovery before editing schedules or running a diary sync, as normal synchronization replaces generated blocks. Back up `data.json` for a complete copy including categories and settings.
 
 ## Mobile support and limitations
 

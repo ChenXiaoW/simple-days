@@ -83,7 +83,7 @@ const event = { id: 'legacy', title: '原有日程', date: '2026-11-06', startTi
   const tab = new Tab({}, plugin);
   const definitions = tab.getSettingDefinitions();
   assert.deepEqual(snapshot(definitions.map(section => section.heading)), ['日程管理', '日记联动']);
-  assert.equal(definitions.flatMap(section => section.items).length, 6);
+  assert.equal(definitions.flatMap(section => section.items).length, 7);
   assert.equal(tab.containerEl.rows.length, 0, 'Search indexing does not create UI controls');
   tab.display();
   assert.equal(tab.containerEl.rows.filter(row => row.heading).length, 2, 'Legacy settings use native headings');
