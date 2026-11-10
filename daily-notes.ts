@@ -21,6 +21,7 @@ interface DailyNoteConfig {
 export interface DailyNoteSyncResult {
   paths: string[];
   errors: string[];
+  writtenPaths?: string[];
 }
 
 const createMoment = moment as unknown as typeof momentFactory;
@@ -175,6 +176,7 @@ export class DailyNotesService {
     }
     const paths = new Set(knownPaths);
     const errors: string[] = [];
+    const writtenPaths: string[] = [];
     for (const path of new Set([...groups.keys(), ...knownPaths])) {
       try {
         this.relativePath(path);
@@ -189,6 +191,7 @@ export class DailyNotesService {
           const current = await this.app.vault.read(file);
           if (replaceScheduleBlock(current, block) !== current) {
             await this.app.vault.process(file, (content) => replaceScheduleBlock(content, block));
+            writtenPaths.push(path);
           }
         }
         if (schedules.length > 0) paths.add(path);
@@ -197,7 +200,7 @@ export class DailyNotesService {
         errors.push(t("pathError", { path, error: errorMessage(error) }));
       }
     }
-    return { paths: [...paths].sort(), errors };
+    return { paths: [...paths].sort(), errors, writtenPaths };
   }
 
   async open(date: string, settings: DailyNoteSettings): Promise<void> {

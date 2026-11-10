@@ -88,6 +88,11 @@ const event = { id: 'legacy', title: '原有日程', date: '2026-11-06', startTi
   tab.display();
   assert.equal(tab.containerEl.rows.filter(row => row.heading).length, 2, 'Legacy settings use native headings');
   const row = name => tab.containerEl.rows.find(item => item.name === name);
+  let importOpens = 0;
+  plugin.openDailyImport = () => { importOpens++; };
+  row('日记 → 日历').component.click();
+  assert.equal(importOpens, 1, 'Diary-to-calendar setting opens the scan/import preview');
+  assert.equal(syncs, 0, 'Import action never invokes calendar-to-diary writes');
   await row('日期显示').component.change('short');
   assert.equal(plugin.settings.dateFormat, 'short');
   await row('自动同步到日记').component.change(false);
@@ -98,7 +103,7 @@ const event = { id: 'legacy', title: '原有日程', date: '2026-11-06', startTi
   await row('日记日期格式').component.change('YYYY/MM/DD');
   assert.equal(writes.at(-1).dailyNotesFolder, '我的日记');
   assert.deepEqual(writes.at(-1).events, [event], 'Setting changes preserve schedules');
-  const sync = row('同步已有日程').component;
+  const sync = row('日历 → 日记').component;
   await sync.click(); assert.equal(sync.disabled, false);
   plugin.synchronizeDailyNotes = async () => { throw new Error('simulated failure'); };
   await assert.rejects(sync.click(), /simulated failure/);

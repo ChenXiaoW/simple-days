@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.9
+
+- Label the two manual operations explicitly as Daily notes → calendar and Calendar → daily notes, with separate scan/import and write buttons.
+- Guide an empty calendar to the importer rather than reporting an empty diary write as successful. Report actual updated-file counts and output paths after a manual diary write.
+- Recreate calendar and overview views retained from an older plugin instance after a hot update, preserving their leaves, dates, modes, filters, zoom and serialized editor drafts.
+- Add regression checks for retained views and older data, manual writes/no-change results, empty-calendar recovery guidance, write failure/retry and deletion cleanup.
+- Document updates that preserve data. A generic Android community-install failure remains unconfirmed; no claim is made that its cause has been identified.
+
 ## 0.6.8
 
 - Add a command and settings entry to preview and import/rebuild schedules from daily Markdown notes, including on mobile when plugin data was not synced.

@@ -44,7 +44,7 @@ function setup({ sidebar = false, main = false, fail = null } = {}) {
   const source = sidebar ? makeLeaf('sidebar') : null;
   const tab = main ? makeLeaf('main') : null;
   const workspace = {
-    getLeavesOfType() { return leaves.filter(leaf => !leaf.detached); },
+    getLeavesOfType(type) { return type === 'schedule-manager-view' ? leaves.filter(leaf => !leaf.detached) : []; },
     iterateRootLeaves(callback) { [note, ...leaves.filter(leaf => leaf.region === 'main' && !leaf.detached)].forEach(callback); },
     getLeaf(location) { assert.equal(location, 'tab'); calls.push('create-tab'); return makeLeaf('main'); },
     async revealLeaf(leaf) {

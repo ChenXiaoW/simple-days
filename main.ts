@@ -99,6 +99,7 @@ export default class ScheduleManagerPlugin extends Plugin {
   private mutationQueue: Promise<unknown> = Promise.resolve();
   private reloadPending: Promise<boolean> | null = null;
   private lastReloadError = "";
+  private restoringViews: Promise<void> | null = null;
 
   async onload(): Promise<void> {
     const value: unknown = await this.loadData();
@@ -163,6 +164,7 @@ export default class ScheduleManagerPlugin extends Plugin {
       callback: () => void this.synchronizeDailyNotes(true),
     });
     this.app.workspace.onLayoutReady(() => {
+      void this.restoreOpenViews();
       if (this.settings.dailyNotesEnabled && (this.data.events.length || this.data.dailyNotePaths.length)) {
         void this.synchronizeDailyNotes();
       }
@@ -175,6 +177,29 @@ export default class ScheduleManagerPlugin extends Plugin {
 
   private hasScheduleView(): boolean {
     return [VIEW_TYPE_SCHEDULE, VIEW_TYPE_OVERVIEW].some(type => this.app.workspace.getLeavesOfType(type).length > 0);
+  }
+
+  async restoreOpenViews(): Promise<void> {
+    if (!this.restoringViews) {
+      const task = async () => {
+        for (const type of [VIEW_TYPE_SCHEDULE, VIEW_TYPE_OVERVIEW]) {
+          for (const leaf of this.app.workspace.getLeavesOfType(type)) {
+            if (leaf.view.getViewType() !== type) continue;
+            const current = type === VIEW_TYPE_SCHEDULE ? leaf.view instanceof ScheduleView : leaf.view instanceof OverviewView;
+            if (current && (leaf.view as ScheduleView | OverviewView).plugin === this) continue;
+            const state = leaf.getViewState();
+            // A hot upgrade may retain views owned by the previous plugin instance. Recreate them
+            // in the same leaves, preserving dates, filters and any serialized editor draft.
+            await leaf.setViewState({ type: "empty", active: false });
+            await leaf.setViewState({ ...state, type, active: false });
+          }
+        }
+      };
+      this.restoringViews = task().catch((error: unknown) => {
+        new Notice(t("restoreViewsFailed", { error: errorMessage(error) }), 10000);
+      }).finally(() => { this.restoringViews = null; });
+    }
+    await this.restoringViews;
   }
 
   async reloadFromDisk(notify = false): Promise<boolean> {
@@ -237,6 +262,7 @@ export default class ScheduleManagerPlugin extends Plugin {
   }
 
   async openOverview(): Promise<void> {
+    await this.restoreOpenViews();
     let leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_OVERVIEW)[0];
     if (!leaf) {
       const right = this.app.workspace.getRightLeaf(false);
@@ -252,6 +278,7 @@ export default class ScheduleManagerPlugin extends Plugin {
   }
 
   async activateView(openEditor = false, sourceLeaf?: WorkspaceLeaf): Promise<void> {
+    await this.restoreOpenViews();
     if (!this.openingTab) {
       this.openingTab = this.openScheduleTab(sourceLeaf).finally(() => {
         this.openingTab = null;
@@ -350,11 +377,21 @@ export default class ScheduleManagerPlugin extends Plugin {
     }
     const task = this.syncQueue.then(async () => {
       if (!this.settings.dailyNotesEnabled) return false;
+      if (notify && !this.data.events.length && !this.data.dailyNotePaths.length) {
+        new Notice(t("syncEmptyCalendar"), 10000);
+        this.openDailyImport();
+        return false;
+      }
       const result = await this.getDailyNotes().sync(this.data.events, this.settings, this.data.dailyNotePaths);
       this.data.dailyNotePaths = result.paths;
       await this.saveDataStore();
       if (result.errors.length) throw new Error(result.errors[0]);
-      if (notify) new Notice(t("syncSuccess", { count: result.paths.length }));
+      if (notify) {
+        const written = result.writtenPaths?.length ?? 0;
+        const paths = result.paths.slice(0, 3);
+        new Notice(t("syncSuccess", { count: result.paths.length, written })
+          + (paths.length ? `\n${t("syncOutputPaths", { paths: paths.join("\n") })}` : ""), 10000);
+      }
       return true;
     });
     this.syncQueue = task.catch(() => undefined);
@@ -498,7 +535,7 @@ class ScheduleSettingTab extends PluginSettingTab {
           }));
         },
       }, {
-        name: t("importCommand"),
+        name: t("importDirection"),
         desc: t("importSettingDesc"),
         render: setting => {
           setting.addButton(button => button.setButtonText(t("importOpen")).onClick(() => this.plugin.openDailyImport()));

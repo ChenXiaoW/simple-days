@@ -48,7 +48,7 @@ function deferred() {
   plugin.app = { workspace: {
     on(name, callback) { workspaceListeners.set(name, callback); return {off:()=>workspaceListeners.delete(name)}; },
     onLayoutReady(callback) { callback(); },
-    getLeavesOfType(type) { return type === 'schedule-manager-view' ? [{}] : []; },
+    getLeavesOfType(type) { return type === 'schedule-manager-view' ? [{view:{getViewType:()=> 'deferred'}}] : []; },
   } };
   plugin.loadData = async () => { reads++; return clone(disk); };
   plugin.saveData = async value => { writes.push(clone(value)); disk = clone(value); };

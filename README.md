@@ -30,7 +30,9 @@ The interface follows Obsidian’s language setting: Chinese for Chinese setting
 
 To update, replace those three files and preserve your existing `data.json`.
 
-Community directory installation will be available after the plugin has been submitted, reviewed, and listed. Publishing this repository alone does not make it appear in the directory.
+You can also install or update **Simple Days** from Obsidian's community plugin directory.
+
+An update does not require uninstalling the plugin. If Obsidian reports “Installation failed”, first retry after restarting the app. To update manually, disable the plugin, replace the three install files in its existing folder, and reopen Obsidian while keeping `data.json`. Do not enable both the old `obsidian-schedule-manager` prototype and Simple Days. A generic installation failure does not identify whether downloading, replacing files, or loading failed; it is not by itself evidence of incompatible schedule data.
 
 ### Migrating from the local prototype
 
@@ -96,13 +98,15 @@ Reloading reads and validates one complete snapshot without writing it back or u
 ### Import / rebuild from daily notes
 
 1. Finish pulling your daily Markdown files to the device.
-2. Run **Simple Days: Import / rebuild schedules from daily notes**, or open the importer in the plugin's **Daily notes** settings.
+2. Run **Simple Days: Import / rebuild schedules from daily notes**, or select **Daily notes → calendar → Scan and import** in the plugin settings.
 3. Select **Scan daily notes**. Review the new schedules, duplicate count, and skipped entries.
 4. Select **Import new schedules** to save them to the calendar and sidebar.
 
 Scanning and importing leave diary files unchanged. Existing schedules are preserved; importing the same entries again does not create duplicates. Both legacy Chinese and English schedule blocks are supported. Dates, complete multi-day ranges, times, completion state, location, tags, participants, and Markdown notes are recovered. Repeated occurrences across multiple daily notes are merged. Categories and original IDs are absent from the old diary format, so restored events receive new IDs and the Work category. The importer scans all Markdown files with the plugin's markers, including notes moved to another folder; ordinary checklists are ignored.
 
 Dates come from explicit `### YYYY-MM-DD` headings, complete multi-day ranges, the configured Daily notes filename format, or an ISO `YYYY-MM-DD.md` filename. For custom nested formats, check the Daily notes folder and format settings. Files named only by month need explicit day headings for single-day entries; the importer never guesses a missing day. Conflicting copies and unreadable entries are listed and skipped. Recovery adds missing schedules; it does not update or delete existing ones or establish automatic two-way synchronization. Complete recovery before editing schedules or running a diary sync, as normal synchronization replaces generated blocks. Back up `data.json` for a complete copy including categories and settings.
+
+The separate **Calendar → daily notes → Write to daily notes** action writes the calendar into notes. It reports the number of updated files and up to three actual output paths. Already matching content reports zero updates. With an empty calendar and no tracked note paths, this action opens the importer instead of reporting an empty sync as success.
 
 ## Mobile support and limitations
 
