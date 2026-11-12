@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.10
+
+- Remove the Open schedule overview button from the calendar tab header.
+
 ## 0.6.9
 
 - Label the two manual operations explicitly as Daily notes → calendar and Calendar → daily notes, with separate scan/import and write buttons.

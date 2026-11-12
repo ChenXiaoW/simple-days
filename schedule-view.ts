@@ -26,7 +26,6 @@ export class ScheduleView extends ItemView {
   getDisplayText(): string { return t("scheduleTitle"); }
   getIcon(): string { return "calendar-days"; }
   async onOpen(): Promise<void> {
-    this.addAction("panel-right", t("openOverview"), () => { void this.plugin.openOverview(); });
     this.rootEl = this.contentEl; this.rootEl.addClass("schedule-manager-view"); this.render(); this.restoreEditor();
   }
   async onClose(): Promise<void> { this.eventDrag.dispose(); this.editor?.close(); this.rootEl?.empty(); }
