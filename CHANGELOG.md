@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.11
+
+- Keep the sidebar schedule overview accessible through a separate calendar-check ribbon icon and its existing command while leaving the calendar tab header button removed.
+- Correct the usage instructions and verify that the overview still opens, renders and reuses its existing sidebar view.
+
 ## 0.6.10
 
 - Remove the Open schedule overview button from the calendar tab header.

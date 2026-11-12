@@ -52,7 +52,7 @@ Keep the old plugin disabled while using Simple Days. Both would otherwise updat
 - Switch between **Month** and **Week** in the toolbar.
 - Select a day to see its agenda. Use **New event** to add an event, or double-click a blank month cell on desktop.
 - Open an event to view, edit, duplicate, complete, or delete it, or to open its daily note.
-- Use **Open schedule overview in sidebar** to open the compact overview.
+- Click the separate **Open schedule overview in sidebar** icon (calendar with a checkmark) in Obsidian's ribbon, or run that command, to open the compact overview. The calendar tab header has no overview button.
 
 ![Week view with example schedules](images/week.png)
 

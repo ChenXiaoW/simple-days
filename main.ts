@@ -114,6 +114,9 @@ export default class ScheduleManagerPlugin extends Plugin {
     this.addRibbonIcon("calendar-days", t("openSchedule"), () => {
       void this.activateView();
     });
+    this.addRibbonIcon("calendar-check", t("openOverviewSidebar"), () => {
+      void this.openOverview();
+    });
 
     this.addCommand({
       id: "open-schedule-manager",

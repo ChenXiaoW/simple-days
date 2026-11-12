@@ -10,9 +10,9 @@ let poll;
 const document = { visibilityState: 'visible' };
 const window = { setInterval(callback, delay) { assert.equal(delay, 15000); poll = callback; return 1; } };
 class MockPlugin {
-  constructor() { this.cleanups = []; this.commands = []; }
+  constructor() { this.cleanups = []; this.commands = []; this.ribbons = []; }
   registerView() {}
-  addRibbonIcon() {}
+  addRibbonIcon(icon, title, callback) { this.ribbons.push({icon, title, callback}); }
   addSettingTab() {}
   addCommand(command) { this.commands.push(command); }
   registerDomEvent(target, name, callback) {
@@ -55,6 +55,13 @@ function deferred() {
   let refreshes = 0;
   plugin.refreshViews = () => { refreshes++; };
   await plugin.onload();
+  let overviewOpens = 0;
+  const originalOpenOverview = plugin.openOverview;
+  plugin.openOverview = async () => { overviewOpens++; };
+  plugin.ribbons.find(item => item.icon === 'calendar-check').callback();
+  plugin.commands.find(item => item.id === 'open-schedule-overview').callback();
+  assert.equal(overviewOpens, 2, 'The sidebar overview keeps independent ribbon and command entry points');
+  plugin.openOverview = originalOpenOverview;
   assert.equal(reads,1,'Startup loads settings and schedules from a single snapshot');
   assert.equal(plugin.data.events[0].id,'old');
   assert.ok(poll,'Android registers a foreground fallback for sync tools without config events');
