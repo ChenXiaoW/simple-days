@@ -100,6 +100,7 @@ export default class ScheduleManagerPlugin extends Plugin {
   private reloadPending: Promise<boolean> | null = null;
   private lastReloadError = "";
   private restoringViews: Promise<void> | null = null;
+  private overviewQueue: Promise<unknown> = Promise.resolve();
 
   async onload(): Promise<void> {
     const value: unknown = await this.loadData();
@@ -113,9 +114,6 @@ export default class ScheduleManagerPlugin extends Plugin {
 
     this.addRibbonIcon("calendar-days", t("openSchedule"), () => {
       void this.activateView();
-    });
-    this.addRibbonIcon("calendar-check", t("openOverviewSidebar"), () => {
-      void this.openOverview();
     });
 
     this.addCommand({
@@ -157,6 +155,7 @@ export default class ScheduleManagerPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
       if (this.hasScheduleView()) void this.reloadFromDisk();
     }));
+    this.registerEvent(this.app.workspace.on("layout-change", () => this.refreshOverviewActions()));
     // Some Android sync tools do not emit config-file change events while the view stays open.
     if (Platform.isMobile) this.registerInterval(window.setInterval(() => {
       if (document.visibilityState === "visible" && this.hasScheduleView()) void this.reloadFromDisk();
@@ -265,19 +264,51 @@ export default class ScheduleManagerPlugin extends Plugin {
   }
 
   async openOverview(): Promise<void> {
-    await this.restoreOpenViews();
-    let leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_OVERVIEW)[0];
-    if (!leaf) {
-      const right = this.app.workspace.getRightLeaf(false);
-      if (!right) { new Notice(t("sidebarUnavailable")); return; }
-      leaf = right;
-      await leaf.setViewState({ type: VIEW_TYPE_OVERVIEW, active: true });
+    await this.changeOverview(false);
+  }
+
+  isOverviewOpen(): boolean {
+    return this.app.workspace.getLeavesOfType(VIEW_TYPE_OVERVIEW).length > 0;
+  }
+
+  refreshOverviewActions(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_SCHEDULE)) {
+      if (leaf.view instanceof ScheduleView) leaf.view.updateOverviewAction();
     }
-    const calendar = this.app.workspace.getLeavesOfType(VIEW_TYPE_SCHEDULE).find(item => this.isMainLeaf(item));
-    if (calendar?.view instanceof ScheduleView && leaf.view instanceof OverviewView) {
-      leaf.view.selectedDate = new Date(calendar.view.selectedDate); leaf.view.render();
-    }
-    await this.app.workspace.revealLeaf(leaf);
+  }
+
+  async toggleOverview(): Promise<void> {
+    await this.changeOverview(true);
+  }
+
+  private async changeOverview(toggle: boolean): Promise<void> {
+    const task = this.overviewQueue.then(async () => {
+      await this.restoreOpenViews();
+      const workspace = this.app.workspace;
+      const existing = workspace.getLeavesOfType(VIEW_TYPE_OVERVIEW);
+      if (toggle && existing.length) {
+        existing.forEach(leaf => leaf.detach());
+        this.refreshOverviewActions();
+        return;
+      }
+      let leaf = existing[0];
+      if (!leaf) {
+        // Add an overview tab to the existing right dock group without replacing its tools.
+        const right = workspace.getRightLeaf(false);
+        if (!right) { new Notice(t("sidebarUnavailable")); return; }
+        leaf = right;
+        try { await leaf.setViewState({ type: VIEW_TYPE_OVERVIEW, active: true }); }
+        catch (error) { leaf.detach(); throw error; }
+      }
+      const calendar = workspace.getLeavesOfType(VIEW_TYPE_SCHEDULE).find(item => this.isMainLeaf(item));
+      if (calendar?.view instanceof ScheduleView && leaf.view instanceof OverviewView) {
+        leaf.view.selectedDate = new Date(calendar.view.selectedDate); leaf.view.render();
+      }
+      await workspace.revealLeaf(leaf);
+      this.refreshOverviewActions();
+    });
+    this.overviewQueue = task.catch(() => undefined);
+    await task;
   }
 
   async activateView(openEditor = false, sourceLeaf?: WorkspaceLeaf): Promise<void> {

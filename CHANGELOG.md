@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.12 (unreleased)
+
+- Restore the overview button in the calendar tab header as an open/close toggle with state-aware labels and pressed feedback.
+- Remove the separate calendar-check ribbon icon. Keep the sidebar widget and existing open command.
+- Serialize repeated toggles, reuse the overview on open, and preserve other sidebar tabs when opening or closing it.
+
 ## 0.6.11
 
 - Keep the sidebar schedule overview accessible through a separate calendar-check ribbon icon and its existing command while leaving the calendar tab header button removed.

@@ -1,5 +1,5 @@
-import { t, weekdayLabels, monthHeading, weekHeading } from "./i18n";
-import { ItemView, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
+import { t, weekdayLabels, monthHeading, weekHeading, errorMessage } from "./i18n";
+import { ItemView, Notice, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import type ScheduleManagerPlugin from "./main";
 import type { ScheduleDraft, ScheduleEvent } from "./main";
 import { CATEGORIES, type CalendarMode, type Category, categoryOf, categoryLabel, dateKey, parseDate, validDate, addDays, addMonths,
@@ -19,6 +19,7 @@ export class ScheduleView extends ItemView {
   private editor: ScheduleEditorModal | null = null;
   private restore: { draft: ScheduleDraft; id: string | null } | null = null;
   private eventDrag: EventDragController;
+  private overviewAction: HTMLElement | null = null;
   constructor(leaf: WorkspaceLeaf, public plugin: ScheduleManagerPlugin) {
     super(leaf); this.eventDrag = new EventDragController(plugin, date => this.selectDate(parseDate(date)));
   }
@@ -26,9 +27,21 @@ export class ScheduleView extends ItemView {
   getDisplayText(): string { return t("scheduleTitle"); }
   getIcon(): string { return "calendar-days"; }
   async onOpen(): Promise<void> {
+    this.overviewAction = this.addAction("panel-right", t("openOverview"), () => {
+      void this.plugin.toggleOverview().catch((error: unknown) => {
+        new Notice(t("overviewToggleFailed", { error: errorMessage(error) }), 10000);
+      });
+    });
+    this.updateOverviewAction();
     this.rootEl = this.contentEl; this.rootEl.addClass("schedule-manager-view"); this.render(); this.restoreEditor();
   }
-  async onClose(): Promise<void> { this.eventDrag.dispose(); this.editor?.close(); this.rootEl?.empty(); }
+  async onClose(): Promise<void> { this.overviewAction = null; this.eventDrag.dispose(); this.editor?.close(); this.rootEl?.empty(); }
+  updateOverviewAction(): void {
+    const open = this.plugin.isOverviewOpen();
+    this.overviewAction?.setAttribute("aria-label", t(open ? "closeOverview" : "openOverview"));
+    this.overviewAction?.setAttribute("aria-pressed", String(open));
+    this.overviewAction?.toggleClass("is-active", open);
+  }
   getState(): Record<string, unknown> {
     return { date: dateKey(this.selectedDate), viewMode: this.viewMode, category: this.category, zoom: this.zoom,
       editorVisible: !!this.editor || !!this.restore, editingId: this.editor?.snapshotId ?? this.restore?.id ?? null,

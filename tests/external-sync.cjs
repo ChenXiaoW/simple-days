@@ -58,9 +58,9 @@ function deferred() {
   let overviewOpens = 0;
   const originalOpenOverview = plugin.openOverview;
   plugin.openOverview = async () => { overviewOpens++; };
-  plugin.ribbons.find(item => item.icon === 'calendar-check').callback();
+  assert.equal(plugin.ribbons.some(item => item.icon === 'calendar-check'), false, 'No independent overview ribbon icon');
   plugin.commands.find(item => item.id === 'open-schedule-overview').callback();
-  assert.equal(overviewOpens, 2, 'The sidebar overview keeps independent ribbon and command entry points');
+  assert.equal(overviewOpens, 1, 'The existing overview command remains available');
   plugin.openOverview = originalOpenOverview;
   assert.equal(reads,1,'Startup loads settings and schedules from a single snapshot');
   assert.equal(plugin.data.events[0].id,'old');
